@@ -1,4 +1,5 @@
 # from django.db import transaction
+from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import render, get_object_or_404
 # from django.core.exceptions import ObjectDoesNotExist
 # from django.db.models import Q, F, Value, Func, ExpressionWrapper, DecimalField
@@ -36,13 +37,17 @@ class Service_TypeViewSet(ModelViewSet):
 
 
 class RecordViewSet(ModelViewSet):
-    queryset = Record.objects.prefetch_related('party', 'service_type')
+    queryset = Record.objects.select_related('party', 'service_type')
     serializer_class = RecordSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['party_id', 'seervice_type_id']
 
 
 class NoteViewSet(ModelViewSet):
-    queryset = Note.objects.select_related('record')
     serializer_class = NoteSerializer
+
+    def get_queryset(self):
+        return Note.objects.filter(record_id=self.kwargs['record_pk'])
 
     def get_serializer_context(self):
         return {'record_id': self.kwargs['record_pk']}
