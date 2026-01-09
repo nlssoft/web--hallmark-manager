@@ -40,7 +40,7 @@ class RecordViewSet(ModelViewSet):
     queryset = Record.objects.select_related('party', 'service_type')
     serializer_class = RecordSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['party_id', 'seervice_type_id']
+    filterset_fields = ['party_id', 'service_type_id']
 
 
 class NoteViewSet(ModelViewSet):
