@@ -1,15 +1,22 @@
 # from django.db import transaction
-from django_filters.rest_framework import DjangoFilterBackend
-from django.shortcuts import render, get_object_or_404
-# from django.core.exceptions import ObjectDoesNotExist
-# from django.db.models import Q, F, Value, Func, ExpressionWrapper, DecimalField
-from django.db.models.aggregates import Count
 # from django.db.models.functions import Concat
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+# from django.core.exceptions import ObjectDoesNotExist
+
+# from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+# from django.shortcuts import render, get_object_or_404
+
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models.aggregates import Count
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django.db.models import Q, F, Value, Func, ExpressionWrapper, DecimalField
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from .models import Party, Service_type, Work_rate, Payment, Record, Allocation, Note
 from .serializer import PartySerializer, Service_TypeSerializer, Work_RateSerializer, RecordSerializer, NoteSerializer
+from .filters import RecordFilter
+
+
+# starting writing code in views.py
 
 
 class PartyViewSet(ModelViewSet):
@@ -37,10 +44,16 @@ class Service_TypeViewSet(ModelViewSet):
 
 
 class RecordViewSet(ModelViewSet):
-    queryset = Record.objects.select_related('party', 'service_type')
+    queryset = Record.objects.annotate(
+        amount=ExpressionWrapper(F('pcs') * F('rate'),
+                                 output_field=DecimalField())
+    ).select_related('party', 'service_type')
+
     serializer_class = RecordSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['party_id', 'service_type_id']
+    filter_backends = [SearchFilter, DjangoFilterBackend, OrderingFilter]
+    filterset_class = RecordFilter
+    search_fields = ['party__firstname']
+    ordering_fields = ['record_date']
 
 
 class NoteViewSet(ModelViewSet):

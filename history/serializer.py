@@ -28,10 +28,15 @@ class Work_RateSerializer(serializers.ModelSerializer):
 
 
 class RecordSerializer(serializers.ModelSerializer):
+    amount = serializers.SerializerMethodField()
+
+    def get_amount(self, record):
+        return record.rate * record.pcs
+
     class Meta:
         model = Record
         fields = ['id', 'party', 'service_type', 'rate',
-                  'pcs', 'record_date', 'discount', 'status']
+                  'pcs', 'record_date', 'discount', 'status', 'amount']
 
 
 class NoteSerializer(serializers.ModelSerializer):

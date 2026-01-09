@@ -55,8 +55,8 @@ class Work_rateadmin(admin.ModelAdmin):
     list_editable = ['rate']
     list_per_page = 10
     list_select_related = ['party', 'service_type']
-    search_fields = ['party__first_name__istartswith',
-                     'party__last_name__istartswith']
+    search_fields = ['party__first_name',
+                     'party__last_name']
 
     @admin.action(description='set defual rate')
     def full_rate(self, request, queryset):
