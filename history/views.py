@@ -64,3 +64,5 @@ class NoteViewSet(ModelViewSet):
 
     def get_serializer_context(self):
         return {'record_id': self.kwargs['record_pk']}
+
+

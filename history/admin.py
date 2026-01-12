@@ -18,9 +18,10 @@ class Work_rate_inline(admin.TabularInline):
 @admin.register(models.Party)
 class Partyadmin(admin.ModelAdmin):
     list_display = ['first_name', 'last_name', 'number', 'email', 'address']
-    list_editable = ['number', 'email', 'address']
+    list_editable = ['number', 'address']
     list_per_page = 10
-    search_fields = ['first_name__istartswith', 'last_name__istartswith']
+    search_fields = ['user__first_name__istartswith', 'user__last_name__istartswith']
+    list_select_related = ['user']
     inlines = [Work_rate_inline]
 
 

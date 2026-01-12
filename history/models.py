@@ -1,20 +1,32 @@
+from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
 from decimal import Decimal
-
+from django.contrib import admin
 
 class Party(models.Model):
-    first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255, blank=True)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete= models.CASCADE)
     number = models.CharField(max_length=255)
-    email = models.EmailField(max_length=255, blank=True)
     address = models.TextField(blank=True)
 
+
     def __str__(self) -> str:
-        return f'{self.first_name} {self.last_name}'
+        return f'{self.user.first_name} {self.user.last_name}'
+
+    @admin.display(ordering= 'user__first_name')
+    def first_name(self):
+        return self.user.first_name
+    
+    @admin.display(ordering= 'user__last_name')
+    def last_name(self):
+        return self.user.last_name
+    
+    @admin.display(ordering= 'user__email')   
+    def email(self):
+        return self .user.email
 
     class Meta:
-        ordering = ['first_name', 'last_name']
+        ordering = ['user__first_name', 'user__last_name']
 
 
 class Service_type(models.Model):
@@ -59,6 +71,10 @@ class Record(models.Model):
     def __str__(self):
         return f'{self.party} | {self.service_type} | {self.record_date}'
 
+    class Meta:
+        permissions = [
+            ('cancel_record', 'can cancel a record' )
+        ]
 
 class Payment(models.Model):
     party = models.ForeignKey(Party, on_delete=models.PROTECT)
