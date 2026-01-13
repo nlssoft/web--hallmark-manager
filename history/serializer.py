@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Party, Service_type, Work_rate, Record, Note
+from .models import Party, Service_Type, Work_Rate, Record, Note, Payment, Allocation
 
 
 class PartySerializer(serializers.ModelSerializer):
@@ -17,13 +17,13 @@ class Service_TypeSerializer(serializers.ModelSerializer):
     used = serializers.IntegerField(read_only=True)
 
     class Meta:
-        model = Service_type
+        model = Service_Type
         fields = ['id', 'type_of_work', 'used']
 
 
 class Work_RateSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Work_rate
+        model = Work_Rate
         fields = ['id', 'rate', 'party', 'service_type']
 
 
@@ -36,7 +36,7 @@ class RecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = Record
         fields = ['id', 'party', 'service_type', 'rate',
-                  'pcs', 'record_date', 'discount', 'status', 'amount']
+                  'pcs', 'record_date', 'discount', 'status', 'amount', 'paid_amount']
 
 
 class NoteSerializer(serializers.ModelSerializer):
@@ -47,3 +47,16 @@ class NoteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         record_id = self.context['record_id']
         return Note.objects.create(record_id=record_id, **validated_data)
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta: 
+        model = Payment
+        fields = ['party', 'amount', 'payment_date']
+
+
+class AllocationSerializer(serializers.Serializer):
+    class Meta:
+        model = Allocation
+        fields = ['party', 'amount', 'record']
+

@@ -41,8 +41,9 @@ INSTALLED_APPS = [
     'djoser',
     'rest_framework',
     "debug_toolbar",
-    'history',
     'core', 
+    'history',
+
 ]
 
 MIDDLEWARE = [

@@ -1,46 +1,35 @@
-from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
 from decimal import Decimal
-from django.contrib import admin
+from django.conf import settings
 
 class Party(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete= models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    first_name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255, blank=True)
     number = models.CharField(max_length=255)
+    email = models.EmailField(max_length=255, blank=True, unique=True)
     address = models.TextField(blank=True)
 
-
     def __str__(self) -> str:
-        return f'{self.user.first_name} {self.user.last_name}'
-
-    @admin.display(ordering= 'user__first_name')
-    def first_name(self):
-        return self.user.first_name
-    
-    @admin.display(ordering= 'user__last_name')
-    def last_name(self):
-        return self.user.last_name
-    
-    @admin.display(ordering= 'user__email')   
-    def email(self):
-        return self .user.email
+        return f'{self.first_name} {self.last_name}'
 
     class Meta:
-        ordering = ['user__first_name', 'user__last_name']
+        ordering = ['first_name', 'last_name']
 
 
-class Service_type(models.Model):
-    code = models.CharField(max_length=3, unique=True)
-    type_of_work = models.CharField(max_length=100, unique=True)
+class Service_Type(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    type_of_work = models.CharField(max_length=50, unique=True)
 
     def __str__(self) -> str:
         return self.type_of_work
 
 
-class Work_rate(models.Model):
+class Work_Rate(models.Model):
     rate = models.DecimalField(max_digits=10, decimal_places=2)
     party = models.ForeignKey(Party, on_delete=models.CASCADE)
-    service_type = models.ForeignKey(Service_type, on_delete=models.CASCADE)
+    service_type = models.ForeignKey(Service_Type, on_delete=models.CASCADE)
 
     class Meta:
         constraints = [
@@ -49,32 +38,21 @@ class Work_rate(models.Model):
 
 
 class Record(models.Model):
-    paid = 'p'
-    due = 'd'
-    partial = 'par'
-
-    pay_status = [
-        (paid, 'Paid'),
-        (due, 'Due'),
-        (partial, 'Partial'),
-    ]
-
     party = models.ForeignKey(Party, on_delete=models.PROTECT)
-    service_type = models.ForeignKey(Service_type, on_delete=models.PROTECT)
+    service_type = models.ForeignKey(Service_Type, on_delete=models.PROTECT)
     pcs = models.PositiveIntegerField()
     rate = models.DecimalField(max_digits=10, decimal_places=2)
     record_date = models.DateField(default=now)
     discount = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00"))
-    status = models.CharField(max_length=3, choices=pay_status, default=due)
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default= Decimal('0.00'))
 
     def __str__(self):
         return f'{self.party} | {self.service_type} | {self.record_date}'
 
-    class Meta:
-        permissions = [
-            ('cancel_record', 'can cancel a record' )
-        ]
+    @property
+    def remaing_amount(self):
+        return self.amount - self.paid_amount
 
 class Payment(models.Model):
     party = models.ForeignKey(Party, on_delete=models.PROTECT)

@@ -10,23 +10,23 @@ from django.utils.http import urlencode
 from . import models
 
 
-class Work_rate_inline(admin.TabularInline):
-    model = models.Work_rate
+class Work_Rate_Inline(admin.TabularInline):
+    model = models.Work_Rate
     extra = 5
 
 
 @admin.register(models.Party)
-class Partyadmin(admin.ModelAdmin):
+class PartyAdmin(admin.ModelAdmin):
     list_display = ['first_name', 'last_name', 'number', 'email', 'address']
     list_editable = ['number', 'address']
     list_per_page = 10
-    search_fields = ['user__first_name__istartswith', 'user__last_name__istartswith']
+    search_fields = ['first_name__istartswith', 'last_name__istartswith']
     list_select_related = ['user']
-    inlines = [Work_rate_inline]
+    inlines = [Work_Rate_Inline]
 
 
-@admin.register(models.Service_type)
-class Service_typeadmin(admin.ModelAdmin):
+@admin.register(models.Service_Type)
+class Service_TypeAdmin(admin.ModelAdmin):
     list_display = ['type_of_work', 'used']
     list_per_page = 10
 
@@ -48,8 +48,8 @@ class Service_typeadmin(admin.ModelAdmin):
         )
 
 
-@admin.register(models.Work_rate)
-class Work_rateadmin(admin.ModelAdmin):
+@admin.register(models.Work_Rate)
+class Work_RateAdmin(admin.ModelAdmin):
     actions = ['full_rate']
     autocomplete_fields = ['party']
     list_display = ['party', 'service_type', 'rate']
@@ -80,7 +80,7 @@ class Record_filter(admin.SimpleListFilter):
 
 
 @admin.register(models.Record)
-class Recordadmin(admin.ModelAdmin):
+class RecordAdmin(admin.ModelAdmin):
     autocomplete_fields = ['party']
     list_display = ['party', 'service_type', 'rate',
                     'record_date', 'pcs', 'discount', 'amount']
@@ -103,7 +103,7 @@ class Recordadmin(admin.ModelAdmin):
 
 
 @admin.register(models.Payment)
-class Paymentadmin(admin.ModelAdmin):
+class PaymentAdmin(admin.ModelAdmin):
     autocomplete_fields = ['party']
     list_display = ['party', 'amount', 'payment_date']
     list_editable = ['amount']
