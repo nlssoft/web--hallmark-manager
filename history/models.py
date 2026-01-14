@@ -12,6 +12,7 @@ class Party(models.Model):
     number = models.CharField(max_length=255)
     email = models.EmailField(max_length=255, blank=True, unique=True)
     address = models.TextField(blank=True)
+    advance_balance = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self) -> str:
         return f'{self.first_name} {self.last_name}'
@@ -82,3 +83,15 @@ class Note(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
     created = models.DateField(auto_now_add=True)
+
+
+class AdvanceLedger(models.Model):
+    party = models.ForeignKey(Party, on_delete=models.CASCADE)
+    payment = models.ForeignKey(Payment, blank= True, null= True , on_delete=models.SET_NULL)
+    record = models.ForeignKey(Record, blank= True, null= True , on_delete=models.SET_NULL)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    direction = models.CharField(
+        max_length=3,
+        choices=[("IN", "IN"), ("OUT", "OUT")]
+    )
+    created_at = models.DateTimeField(auto_now_add=True)

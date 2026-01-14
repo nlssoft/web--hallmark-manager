@@ -12,9 +12,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
-from .models import Party, Service_Type, Work_Rate, Payment, Record, Allocation, Note
+from .models import Party, Service_Type, Work_Rate, Payment, Record, Allocation, Note, AdvanceLedger
 from .serializer import PartySerializer, Service_TypeSerializer, Work_RateSerializer, \
-    RecordSerializer, NoteSerializer, PaymentSerializer, Allocation
+    RecordSerializer, NoteSerializer, PaymentSerializer, AllocationSerializer, AdvanceLedgerSerializer
 
 # starting writing code from this point !!!
 
@@ -63,6 +63,32 @@ class RecordViewSet(ModelViewSet):
         return Record.objects.filter(party__user=self.request.user)\
             .select_related('party', 'service_type')
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exceptions=True)
+        with transaction.atomic():
+            record=serializer.save
+            party = record.party
+            remaining_amount= record.remaining_amount
+
+        if party.advance_balance > 0 and remaining_amount > 0:
+            used = min(party.advance_balance, remaining_amount)
+
+            AdvanceLedger.objects.create(
+                party=party,
+                record=record,
+                amount=used,
+                direction="OUT"
+            )
+
+
+            record.paid_amount += used
+            record.save(update_fields=['paid_amount'])
+
+            party.advance_balance -= used
+            party.save(update_fields=['advance_balance'])
+
+    def destro
 
 class NoteViewSet(ModelViewSet):
     serializer_class = NoteSerializer
@@ -107,30 +133,64 @@ class PaymentViewSet(ModelViewSet):
 
                 remaining_payment -= allocated
 
-            return Response(self.get_serializer(payment).data, status=status.HTTP_201_CREATED)
+            if remaining_payment > 0:
+                party = payment.party
+                AdvanceLedger.objects.create(
+                    party = party,
+                    payment = payment,
+                    amount = remaining_payment,
+                    direction = 'IN'
+                )
+                party.advance_balance += remaining_payment
+                party.save(update_fields=["advance_balance"])
+            
+        return Response(self.get_serializer(payment).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         payment = self.get_object()
         with transaction.atomic():
-            allocation_qs = Allocation.objects.filter(payment=payment)
+            allocation_qs = list(Allocation.objects.select_related('record').filter(payment=payment))
             for allocations in allocation_qs:
                 allocations.record.paid_amount -= allocations.amount
                 allocations.record.save(update_fields=['paid_amount'])
                 allocations.delete()
+
+            advanceledger_qs= list(AdvanceLedger.objects.filter(payment=payment,direction="IN"))
+            if advanceledger_qs:
+                party = payment.party
+                total_advance = sum(balance.amount for balance in advanceledger_qs)
+                party.advance_balance -= total_advance
+                party.save(update_fields=["advance_balance"])
+            for ledger in advanceledger_qs:
+                ledger.delete()
+
             payment.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         payment = self.get_object()
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(payment, data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
-            allocation_qs = Allocation.objects.filter(payment=payment)
+            allocation_qs = list(Allocation.objects.select_related('record').filter(payment=payment))
             for allocations in allocation_qs:
                 allocations.record.paid_amount -= allocations.amount
                 allocations.record.save(update_fields=['paid_amount'])
                 allocations.delete()
+                AdvanceLedger.objects.filter(
+                payment=payment,
+                direction="IN"
+                ).delete()
+
+            advanceledger_qs= list(AdvanceLedger.objects.filter(payment=payment,direction="IN"))
+            if advanceledger_qs:
+                party = payment.party
+                total_advance = sum(balance.amount for balance in advanceledger_qs)
+                party.advance_balance -= total_advance
+                party.save(update_fields=["advance_balance"])
+            for ledger in advanceledger_qs:
+                ledger.delete()  
 
             payment = serializer.save()
             remaining_payment = payment.amount
@@ -153,4 +213,31 @@ class PaymentViewSet(ModelViewSet):
 
                 remaining_payment -= allocated
 
+            if remaining_payment > 0:
+                party = payment.party
+                AdvanceLedger.objects.create(
+                    party = party,
+                    payment = payment,
+                    amount = remaining_payment,
+                    direction = 'IN'
+                )
+                party.advance_balance += remaining_payment
+                party.save(update_fields=["advance_balance"])
+            
+
             return Response(self.get_serializer(payment).data, status=status.HTTP_200_OK)
+
+
+
+class AllocationViewSet(ReadOnlyModelViewSet):
+    serializer_class = AllocationSerializer
+
+    def get_queryset(self):
+        return Allocation.objects.filter(payment__party__user=self.request.user)
+    
+
+class AdvanceLedgerViewSet(ReadOnlyModelViewSet):
+    serializer_class = AdvanceLedgerSerializer
+
+    def get_queryset(self):
+        return AdvanceLedger.objects.filter(party__user=self.request.user)

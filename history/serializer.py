@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Party, Service_Type, Work_Rate, Record, Note, Payment, Allocation
+from .models import Party, Service_Type, Work_Rate, Record, Note, Payment, Allocation, AdvanceLedger
 
 
 class PartySerializer(serializers.ModelSerializer):
@@ -60,3 +60,7 @@ class AllocationSerializer(serializers.Serializer):
         model = Allocation
         fields = ['party', 'amount', 'record']
 
+class AdvanceLedgerSerializer(serializers.serializer):
+    class Meta:
+        model = AdvanceLedger
+        fields = ['party', 'payment', 'record', 'amount', 'direction' , 'created_at']
