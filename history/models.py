@@ -8,11 +8,12 @@ class Party(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
                              on_delete=models.CASCADE)
     first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255, blank=True)
-    number = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255, blank=True, null=True)
+    number = models.CharField(max_length=255, null=True,  blank=True)
     email = models.EmailField(max_length=255, blank=True, unique=True)
-    address = models.TextField(blank=True)
-    advance_balance = models.DecimalField(max_digits=10, decimal_places=2)
+    address = models.TextField(blank=True,  null=True,)
+    advance_balance = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
     def __str__(self) -> str:
         return f'{self.first_name} {self.last_name}'
@@ -59,6 +60,11 @@ class Record(models.Model):
     def remaining_amount(self):
         return (self.pcs*self.rate - self.discount) - self.paid_amount
 
+    class Meta:
+        permissions = [
+            ('cancel_record', 'can cancel record')
+        ]
+
 
 class Payment(models.Model):
     party = models.ForeignKey(Party, on_delete=models.PROTECT)
@@ -87,8 +93,10 @@ class Note(models.Model):
 
 class AdvanceLedger(models.Model):
     party = models.ForeignKey(Party, on_delete=models.CASCADE)
-    payment = models.ForeignKey(Payment, blank= True, null= True , on_delete=models.SET_NULL)
-    record = models.ForeignKey(Record, blank= True, null= True , on_delete=models.SET_NULL)
+    payment = models.ForeignKey(
+        Payment, blank=True, null=True, on_delete=models.SET_NULL)
+    record = models.ForeignKey(
+        Record, blank=True, null=True, on_delete=models.SET_NULL)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     direction = models.CharField(
         max_length=3,

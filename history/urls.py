@@ -5,12 +5,12 @@ from . import views
 
 router = routers.DefaultRouter()
 router.register('party-list', views.PartyViewSet, basename='party')
-router.register('work-rate', views.Work_RateViewSet, basename='work-rate')
+router.register('work-rate', views.Work_RateViewSet, basename='work')
 router.register('record', views.RecordViewSet, basename='record')
 router.register('payment', views.PaymentViewSet, basename='payment')
 router.register('allocation', views.AllocationViewSet, basename='allocation')
-router.register('advance-ledger', views.AdvanceLedger, basename='advance-ledger')
-
+router.register('advance-ledger', views.AdvanceLedgerViewSet,
+                basename='advance-ledger')
 
 
 record_router = routers.NestedDefaultRouter(router, 'record', lookup='record')

@@ -17,8 +17,8 @@ class Work_Rate_Inline(admin.TabularInline):
 
 @admin.register(models.Party)
 class PartyAdmin(admin.ModelAdmin):
-    list_display = ['first_name', 'last_name', 'number', 'email', 'address']
-    list_editable = ['number', 'address']
+    list_display = ['user', 'first_name', 'last_name',
+                    'number', 'email', 'address', 'advance_balance']
     list_per_page = 10
     search_fields = ['first_name__istartswith', 'last_name__istartswith']
     list_select_related = ['user']
@@ -27,7 +27,7 @@ class PartyAdmin(admin.ModelAdmin):
 
 @admin.register(models.Service_Type)
 class Service_TypeAdmin(admin.ModelAdmin):
-    list_display = ['type_of_work', 'used']
+    list_display = ['user', 'type_of_work', 'used']
     list_per_page = 10
 
     def used(self, obj):
