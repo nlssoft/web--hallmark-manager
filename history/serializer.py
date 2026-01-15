@@ -55,12 +55,12 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = ['party', 'amount', 'payment_date']
 
 
-class AllocationSerializer(serializers.Serializer):
+class AllocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Allocation
         fields = ['party', 'amount', 'record']
 
-class AdvanceLedgerSerializer(serializers.serializer):
+class AdvanceLedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdvanceLedger
         fields = ['party', 'payment', 'record', 'amount', 'direction' , 'created_at']

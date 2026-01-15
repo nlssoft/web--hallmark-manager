@@ -54,11 +54,12 @@ class Service_TypeViewSet(ReadOnlyModelViewSet):
 
 
 class RecordViewSet(ModelViewSet):
+    queryset = Record.objects.none()
     serializer_class = RecordSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['party_id', 'service_type_id']
     permission_classes = [IsAuthenticated]
-
+    
     def get_queryset(self):
         return Record.objects.filter(party__user=self.request.user)\
             .select_related('party', 'service_type')
@@ -88,7 +89,44 @@ class RecordViewSet(ModelViewSet):
             party.advance_balance -= used
             party.save(update_fields=['advance_balance'])
 
-    def destro
+    def destroy(self, request, *args, **kwargs):
+        record = self.get_object()
+        with transaction.atomic():
+            party = record.party
+            advanceledger_qs = list(AdvanceLedger.objects.filter(record=record, direction='OUT'))
+            if advanceledger_qs:
+                amount_to_return = sum(row.amount for row in advanceledger_qs)
+                party.advance_balance += amount_to_return
+                party.save(update_fields=['advance_balance'])
+
+            for ledger in advanceledger_qs:
+                ledger.delete()
+
+
+                allocation_qs = list(Allocation.objects.filter(record=record))
+                for row in allocation_qs:
+                    row.delete()
+
+            record.delete()
+            return Response(status= status.HTTP_204_NO_CONTENT)
+    
+    def update(self, request, *args, **kwargs):
+        record = self.get_object()
+        old_remaining = record.remaing_amount
+        serializer = self.get_serializer(record, data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            record = serializer.save()
+            new_remaining = record.remaing_amount
+
+            if new_remaining < old_remaining:
+                pass
+            elif new_remaining > old_remaining:
+                pass
+
+        return Response(self.get_serializer(record).data)
+
 
 class NoteViewSet(ModelViewSet):
     serializer_class = NoteSerializer
@@ -115,7 +153,7 @@ class PaymentViewSet(ModelViewSet):
             payment = serializer.save()
             remaining_payment = payment.amount
             unpaid_records = Record.objects.filter(party=payment.party,
-                                                   paid_amount__lt=models.F('amount')).order_by('record_date')
+                                                   paid_amount__lt=models.F('amount').order_by('record_date'))
 
             for r in unpaid_records:
                 if remaining_payment <= 0:
@@ -226,7 +264,6 @@ class PaymentViewSet(ModelViewSet):
             
 
             return Response(self.get_serializer(payment).data, status=status.HTTP_200_OK)
-
 
 
 class AllocationViewSet(ReadOnlyModelViewSet):
