@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,7 +42,7 @@ INSTALLED_APPS = [
     'djoser',
     'rest_framework',
     "debug_toolbar",
-    'core', 
+    'core',
     'history',
 
 ]
@@ -142,13 +143,19 @@ REST_FRAMEWORK = {
     ),
 }
 
-SIMPLE_JWT = {
-   'AUTH_HEADER_TYPES': ('JWT',),
-}
-
 AUTH_USER_MODEL = 'core.User'
 
 
 DJOSER = {
-    'SERIALIZERS': {'user_create': 'core.serializer.UserCreateSerializer' }
+    'SERIALIZERS': {
+        'user_create': 'core.serializer.UserCreateSerializer',
+        'current_user': 'core.serializer.UserSerializer',
+
+    }
 }
+
+
+SIMPLE_JWT = {
+    'AUTH_HEADER_TYPES': ('JWT',),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=10),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=20), }

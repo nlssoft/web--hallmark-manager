@@ -15,6 +15,10 @@ class Party(models.Model):
     advance_balance = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
+    @property
+    def owner(self):
+        return self.user
+
     def __str__(self) -> str:
         return f'{self.first_name} {self.last_name}'
 
@@ -35,6 +39,10 @@ class Work_Rate(models.Model):
     rate = models.DecimalField(max_digits=10, decimal_places=2)
     party = models.ForeignKey(Party, on_delete=models.CASCADE)
     service_type = models.ForeignKey(Service_Type, on_delete=models.CASCADE)
+
+    @property
+    def owner(self):
+        return self.party.user
 
     class Meta:
         constraints = [
@@ -60,6 +68,10 @@ class Record(models.Model):
     def remaining_amount(self):
         return (self.pcs*self.rate - self.discount) - self.paid_amount
 
+    @property
+    def owner(self):
+        return self.party.user
+
     class Meta:
         permissions = [
             ('cancel_record', 'can cancel record')
@@ -73,6 +85,10 @@ class Payment(models.Model):
 
     def __str__(self):
         return f'{self.party} | {self.amount} | {self.payment_date}'
+
+    @property
+    def owner(self):
+        return self.party.user
 
 
 class Allocation(models.Model):
@@ -89,6 +105,10 @@ class Note(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
     created = models.DateField(auto_now_add=True)
+
+    @property
+    def owner(self):
+        return self.record.party.user
 
 
 class AdvanceLedger(models.Model):

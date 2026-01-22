@@ -10,7 +10,8 @@ class PartySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Party
-        fields = ['id', 'first_name', 'last_name', 'number', 'full']
+        fields = ['id', 'first_name', 'last_name',
+                  'number', 'address', 'advance_balance', 'email',  'full']
 
 
 class Service_TypeSerializer(serializers.ModelSerializer):
@@ -50,7 +51,7 @@ class NoteSerializer(serializers.ModelSerializer):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    class Meta: 
+    class Meta:
         model = Payment
         fields = ['party', 'amount', 'payment_date']
 
@@ -60,7 +61,9 @@ class AllocationSerializer(serializers.ModelSerializer):
         model = Allocation
         fields = ['party', 'amount', 'record']
 
+
 class AdvanceLedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdvanceLedger
-        fields = ['party', 'payment', 'record', 'amount', 'direction' , 'created_at']
+        fields = ['party', 'payment', 'record',
+                  'amount', 'direction', 'created_at']
