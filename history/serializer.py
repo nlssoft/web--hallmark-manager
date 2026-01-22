@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Party, Service_Type, Work_Rate, Record, Note, Payment, Allocation, AdvanceLedger
+from .models import *
 
 
 class PartySerializer(serializers.ModelSerializer):
@@ -13,6 +13,7 @@ class PartySerializer(serializers.ModelSerializer):
         fields = ['id', 'first_name', 'last_name',
                   'number', 'address', 'advance_balance', 'email',  'full']
 
+        read_only_fields = ['id', 'advance_balance'] 
 
 class Service_TypeSerializer(serializers.ModelSerializer):
     used = serializers.IntegerField(read_only=True)
@@ -28,6 +29,14 @@ class Work_RateSerializer(serializers.ModelSerializer):
         fields = ['id', 'rate', 'party', 'service_type']
 
 
+
+class RecordUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Record
+        fields = ['rate', 'service_type', 'pcs', 'discount']
+
+
+
 class RecordSerializer(serializers.ModelSerializer):
     amount = serializers.SerializerMethodField()
 
@@ -37,7 +46,7 @@ class RecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = Record
         fields = ['id', 'party', 'service_type', 'rate',
-                  'pcs', 'record_date', 'discount', 'status', 'amount', 'paid_amount']
+                  'pcs', 'record_date', 'discount', 'amount', 'paid_amount']
 
 
 class NoteSerializer(serializers.ModelSerializer):
@@ -67,3 +76,10 @@ class AdvanceLedgerSerializer(serializers.ModelSerializer):
         model = AdvanceLedger
         fields = ['party', 'payment', 'record',
                   'amount', 'direction', 'created_at']
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        models = AuditLog
+        fields = ['object_id', 'model_name', 'action', 
+                  'before', 'after', 'reason' , 'created_at']

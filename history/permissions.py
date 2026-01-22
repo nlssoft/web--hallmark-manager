@@ -1,6 +1,22 @@
-from rest_framework.permissions import BasePermission
+from rest_framework import permissions
+from django.utils.timezone import now, timedelta
 
-
-class IsAdminOrReadOnly(BasePermission):
+class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
-        if request.method == ''
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return bool(request.user and request.user.is_staff)
+
+
+class IsOwner(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return obj.user == request.user
+    
+
+class PaymentSaftyNet(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+            if request.method == 'DELETE':
+                return (now() - obj.payment_date) <= timedelta(days=7)
+            return True
+
+                

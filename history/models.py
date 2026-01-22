@@ -123,3 +123,23 @@ class AdvanceLedger(models.Model):
         choices=[("IN", "IN"), ("OUT", "OUT")]
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class AuditLog(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,
+                             on_delete=models.SET_NULL, blank=True, null= True)
+    object_id = models.PositiveIntegerField()
+    model_name = models.CharField(max_length=50)
+    action = models.CharField(
+        max_length= 10,
+        choices=[
+            ('DELETE', 'DELETE'),
+            ('UPDATE', 'UPDATE')
+        ]
+    )
+    before = models.JSONField(null= True, blank=True)
+    after = models.JSONField(null= True, blank=True)
+    reason = models.TextField(null= True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    

@@ -13,7 +13,7 @@ router.register('payment', views.PaymentViewSet, basename='payment')
 router.register('allocation', views.AllocationViewSet, basename='allocation')
 router.register('advance-ledger', views.AdvanceLedgerViewSet,
                 basename='advance-ledger')
-
+router.register('audit-log', views.AuditLogViewSet, basename='audit=log')
 
 record_router = routers.NestedDefaultRouter(router, 'record', lookup='record')
 record_router.register('note', views.NoteViewSet,

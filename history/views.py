@@ -12,16 +12,16 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
-from .models import Party, Service_Type, Work_Rate, Payment, Record, Allocation, Note, AdvanceLedger
-from .serializer import PartySerializer, Service_TypeSerializer, Work_RateSerializer, \
-    RecordSerializer, NoteSerializer, PaymentSerializer, AllocationSerializer, AdvanceLedgerSerializer
+from .models import *
+from .serializer import *
+from .permissions import *
 
 # starting writing code from this point !!!
 
 
 class PartyViewSet(ModelViewSet):
     serializer_class = PartySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner]
 
     def get_queryset(self):
         return Party.objects.filter(user=self.request.user)
@@ -36,7 +36,7 @@ class PartyViewSet(ModelViewSet):
 
 class Work_RateViewSet(ModelViewSet):
     serializer_class = Work_RateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner]
 
     def get_queryset(self):
         return Work_Rate.objects.filter(party__user=self.request.user)\
@@ -54,11 +54,15 @@ class Service_TypeViewSet(ReadOnlyModelViewSet):
 
 
 class RecordViewSet(ModelViewSet):
-    queryset = Record.objects.none()
-    serializer_class = RecordSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['party_id', 'service_type_id']
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get_serializer(self, *args, **kwargs):
+        if self.action in ['update', 'partial_update']:
+            return RecordUpdateSerializer() 
+        return RecordSerializer()
+    
 
     def get_queryset(self):
         return Record.objects.filter(party__user=self.request.user)\
@@ -68,7 +72,7 @@ class RecordViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exceptions=True)
         with transaction.atomic():
-            record = serializer.save
+            record = serializer.save()
             party = record.party
             remaining_amount = record.remaining_amount
 
@@ -88,8 +92,12 @@ class RecordViewSet(ModelViewSet):
             party.advance_balance -= used
             party.save(update_fields=['advance_balance'])
 
+        return Response(status=status.HTTP_201_CREATED)
+
     def destroy(self, request, *args, **kwargs):
         record = self.get_object()
+        record_id = record.id
+        before_state = RecordSerializer(record).data
         with transaction.atomic():
             party = record.party
             advanceledger_qs = list(AdvanceLedger.objects.filter(
@@ -107,29 +115,42 @@ class RecordViewSet(ModelViewSet):
                     row.delete()
 
             record.delete()
+            AuditLog.objects.create(
+                user=request.user,
+                model_name='Record',
+                object_id=record_id,
+                action='DELETE',
+                before=before_state,
+                after=None,
+                reason=request.data.get('reason')
+            )
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         record = self.get_object()
-        old_remaining = record.remaing_amount
-        serializer = self.get_serializer(record, data=request.data)
+        record_id = record.id
+        before_state = RecordSerializer(record).data
+        serializer = self.get_serializer(record, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
             record = serializer.save()
-            new_remaining = record.remaing_amount
 
-            if new_remaining < old_remaining:
-                pass
-            elif new_remaining > old_remaining:
-                pass
-
+            AuditLog.objects.create(
+                user=request.user,
+                model_name='Record',
+                object_id=record_id,
+                action='UPDATE',
+                before=before_state,
+                after=RecordSerializer(record).data,
+                reason=request.data.get('reason')
+            )
         return Response(self.get_serializer(record).data)
 
 
 class NoteViewSet(ModelViewSet):
     serializer_class = NoteSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner]
 
     def get_queryset(self):
         return Note.objects.filter(record__party__user=self.request.user,
@@ -141,7 +162,7 @@ class NoteViewSet(ModelViewSet):
 
 class PaymentViewSet(ModelViewSet):
     serializer_class = PaymentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner, PaymentSaftyNet]
 
     def get_queryset(self):
         return Payment.objects.filter(party__user=self.request.user)
@@ -186,6 +207,7 @@ class PaymentViewSet(ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         payment = self.get_object()
+        payment_id = payment.id
         with transaction.atomic():
             allocation_qs = list(Allocation.objects.select_related(
                 'record').filter(payment=payment))
@@ -205,25 +227,42 @@ class PaymentViewSet(ModelViewSet):
             for ledger in advanceledger_qs:
                 ledger.delete()
 
+            before_state = PaymentSerializer(payment).date
+
             payment.delete()
+
+            AuditLog.objects.create(
+                user=request.user,
+                model_name='Payment',
+                object_id=payment_id,
+                action='DELETE',
+                before=before_state,
+                after=None,
+                reason=request.data.get('reason')
+            )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         payment = self.get_object()
-        serializer = self.get_serializer(payment, data=request.data)
+        payment_id = payment.id
+        before_state = PaymentSerializer(payment).data
+        serializer = self.get_serializer(payment, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             allocation_qs = list(Allocation.objects.select_related(
                 'record').filter(payment=payment))
-            for allocations in allocation_qs:
+            for allocation in allocation_qs:
+                record = allocation.record
+                record.paid_amount = max(
+                    0,
+                    record.paid_amount - allocation.amount
+                )
+                record.save(update_fields=['paid_amount'])
+                allocation.delete()
                 allocations.record.paid_amount -= allocations.amount
                 allocations.record.save(update_fields=['paid_amount'])
                 allocations.delete()
-                AdvanceLedger.objects.filter(
-                    payment=payment,
-                    direction="IN"
-                ).delete()
 
             advanceledger_qs = list(AdvanceLedger.objects.filter(
                 payment=payment, direction="IN"))
@@ -268,6 +307,16 @@ class PaymentViewSet(ModelViewSet):
                 party.advance_balance += remaining_payment
                 party.save(update_fields=["advance_balance"])
 
+            AuditLog.objects.create(
+                user=request.user,
+                model_name='Payment',
+                object_id=payment_id,
+                action='UPDATE',
+                before=before_state,
+                after=PaymentSerializer(payment).data,
+                reason=request.data.get('reason')
+            )
+
             return Response(self.get_serializer(payment).data, status=status.HTTP_200_OK)
 
 
@@ -285,3 +334,12 @@ class AdvanceLedgerViewSet(ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return AdvanceLedger.objects.filter(party__user=self.request.user)
+
+
+
+class AuditLogViewSet(ReadOnlyModelViewSet):
+    serializer_class = AuditLogSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return AuditLog.objects.filter(user= self.request.user)
