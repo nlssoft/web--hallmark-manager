@@ -1,5 +1,7 @@
 from rest_framework import permissions
 from django.utils.timezone import now, timedelta
+from django.utils.timezone import localdate
+
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -10,13 +12,11 @@ class IsAdminOrReadOnly(permissions.BasePermission):
 
 class IsOwner(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        return obj.user == request.user
-    
+        return obj.owner == request.user
+
 
 class PaymentSaftyNet(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-            if request.method == 'DELETE':
-                return (now() - obj.payment_date) <= timedelta(days=7)
-            return True
-
-                
+        if request.method in ['DELETE', 'PUT', 'PATCH']:
+            return (localdate() - obj.payment_date) <= timedelta(days=7)
+        return True

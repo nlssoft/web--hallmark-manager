@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.timezone import now
 from decimal import Decimal
 from django.conf import settings
+from django.utils.timezone import localdate
 
 
 class Party(models.Model):
@@ -64,6 +65,9 @@ class Record(models.Model):
     def __str__(self):
         return f'{self.party} | {self.service_type} | {self.record_date}'
 
+    def get_amount(self, record):
+        return record.rate * record.pcs
+
     @property
     def remaining_amount(self):
         return (self.pcs*self.rate - self.discount) - self.paid_amount
@@ -71,6 +75,10 @@ class Record(models.Model):
     @property
     def owner(self):
         return self.party.user
+
+    @property
+    def amount(self):
+        return self.rate * self.pcs
 
     class Meta:
         permissions = [
@@ -81,7 +89,7 @@ class Record(models.Model):
 class Payment(models.Model):
     party = models.ForeignKey(Party, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_date = models.DateField(default=now)
+    payment_date = models.DateField(default=localdate)
 
     def __str__(self):
         return f'{self.party} | {self.amount} | {self.payment_date}'
@@ -127,19 +135,17 @@ class AdvanceLedger(models.Model):
 
 class AuditLog(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.SET_NULL, blank=True, null= True)
+                             on_delete=models.SET_NULL, blank=True, null=True)
     object_id = models.PositiveIntegerField()
     model_name = models.CharField(max_length=50)
     action = models.CharField(
-        max_length= 10,
+        max_length=10,
         choices=[
             ('DELETE', 'DELETE'),
             ('UPDATE', 'UPDATE')
         ]
     )
-    before = models.JSONField(null= True, blank=True)
-    after = models.JSONField(null= True, blank=True)
-    reason = models.TextField(null= True, blank=True)
+    before = models.JSONField(null=True, blank=True)
+    after = models.JSONField(null=True, blank=True)
+    reason = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    

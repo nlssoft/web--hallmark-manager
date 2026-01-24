@@ -2,7 +2,9 @@
 # from django.db.models.functions import Concat
 # from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 
+import json
 from django.db import models
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q, F, Value, Func, ExpressionWrapper, DecimalField
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
@@ -12,6 +14,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
+
 from .models import *
 from .serializer import *
 from .permissions import *
@@ -25,6 +28,9 @@ class PartyViewSet(ModelViewSet):
 
     def get_queryset(self):
         return Party.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     def destroy(self, request, *args, **kwargs):
         party = self.get_object()
@@ -58,11 +64,15 @@ class RecordViewSet(ModelViewSet):
     filterset_fields = ['party_id', 'service_type_id']
     permission_classes = [IsAuthenticated, IsOwner]
 
-    def get_serializer(self, *args, **kwargs):
-        if self.action in ['update', 'partial_update']:
-            return RecordUpdateSerializer() 
-        return RecordSerializer()
-    
+    def get_serializer_class(self, *args, **kwargs):
+        if self.action in ['list', 'retrieve']:
+            return RecordSerializer
+        elif self.action in ['update', 'partial_update']:
+            return RecordUpdateSerializer
+        elif self.action == 'create':
+            return RecordCreateSerializer
+
+        return RecordSerializer
 
     def get_queryset(self):
         return Record.objects.filter(party__user=self.request.user)\
@@ -70,34 +80,33 @@ class RecordViewSet(ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exceptions=True)
+        serializer.is_valid(raise_exception=True)
         with transaction.atomic():
-            record = serializer.save()
+            self.perform_create(serializer)
+            record = serializer.instance
             party = record.party
             remaining_amount = record.remaining_amount
 
-        if party.advance_balance > 0 and remaining_amount > 0:
-            used = min(party.advance_balance, remaining_amount)
+            if party.advance_balance > 0 and remaining_amount > 0:
+                used = min(party.advance_balance, remaining_amount)
 
-            AdvanceLedger.objects.create(
-                party=party,
-                record=record,
-                amount=used,
-                direction="OUT"
-            )
+                AdvanceLedger.objects.create(
+                    party=party,
+                    record=record,
+                    amount=used,
+                    direction="OUT"
+                )
 
-            record.paid_amount += used
-            record.save(update_fields=['paid_amount'])
+                record.paid_amount += used
+                record.save(update_fields=['paid_amount'])
 
-            party.advance_balance -= used
-            party.save(update_fields=['advance_balance'])
+                party.advance_balance -= used
+                party.save(update_fields=['advance_balance'])
 
-        return Response(status=status.HTTP_201_CREATED)
+            return Response(self.get_serializer(record).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         record = self.get_object()
-        record_id = record.id
-        before_state = RecordSerializer(record).data
         with transaction.atomic():
             party = record.party
             advanceledger_qs = list(AdvanceLedger.objects.filter(
@@ -115,26 +124,33 @@ class RecordViewSet(ModelViewSet):
                     row.delete()
 
             record.delete()
-            AuditLog.objects.create(
-                user=request.user,
-                model_name='Record',
-                object_id=record_id,
-                action='DELETE',
-                before=before_state,
-                after=None,
-                reason=request.data.get('reason')
-            )
+
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         record = self.get_object()
         record_id = record.id
-        before_state = RecordSerializer(record).data
-        serializer = self.get_serializer(record, data=request.data, partial=True)
+
+        before_state = json.loads(
+            json.dumps(
+                RecordSerializer(record).data,
+                cls=DjangoJSONEncoder
+            )
+        )
+
+        serializer = self.get_serializer(
+            record, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
             record = serializer.save()
+
+            after_state = json.loads(
+                json.dumps(
+                    RecordSerializer(record).data,
+                    cls=DjangoJSONEncoder
+                )
+            )
 
             AuditLog.objects.create(
                 user=request.user,
@@ -142,10 +158,10 @@ class RecordViewSet(ModelViewSet):
                 object_id=record_id,
                 action='UPDATE',
                 before=before_state,
-                after=RecordSerializer(record).data,
+                after=after_state,
                 reason=request.data.get('reason')
             )
-        return Response(self.get_serializer(record).data)
+        return Response(self.get_serializer(record).data, status=status.HTTP_202_ACCEPTED)
 
 
 class NoteViewSet(ModelViewSet):
@@ -168,32 +184,42 @@ class PaymentViewSet(ModelViewSet):
         return Payment.objects.filter(party__user=self.request.user)
 
     def create(self, request, *args, **kwargs):
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        with transaction.atomic():
-            payment = serializer.save()
-            remaining_payment = payment.amount
-            unpaid_records = Record.objects.filter(party=payment.party,
-                                                   paid_amount__lt=models.F('amount').order_by('record_date'))
 
-            for r in unpaid_records:
+        with transaction.atomic():
+
+            payment = serializer.save()
+
+            remaining_payment = payment.amount
+
+            unpaid_records = Record.objects.filter(party=payment.party,
+                                                   paid_amount__lt=ExpressionWrapper(
+                                                       F('pcs') * F('rate'),
+                                                       output_field=DecimalField()
+                                                   )
+                                                   ).order_by('record_date')
+
+            for record in unpaid_records:
                 if remaining_payment <= 0:
                     break
-                allocated = min(r.remaining_amount, remaining_payment)
+                allocated = min(record.remaining_amount, remaining_payment)
 
                 Allocation.objects.create(
                     payment=payment,
                     amount=allocated,
-                    record=r
+                    record=record
                 )
 
-                r.paid_amount += allocated
-                r.save(update_fields=['paid_amount'])
+                record.paid_amount += allocated
+                record.save(update_fields=['paid_amount'])
 
                 remaining_payment -= allocated
 
             if remaining_payment > 0:
                 party = payment.party
+
                 AdvanceLedger.objects.create(
                     party=party,
                     payment=payment,
@@ -203,11 +229,10 @@ class PaymentViewSet(ModelViewSet):
                 party.advance_balance += remaining_payment
                 party.save(update_fields=["advance_balance"])
 
-        return Response(self.get_serializer(payment).data, status=status.HTTP_201_CREATED)
+            return Response(self.get_serializer(payment).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         payment = self.get_object()
-        payment_id = payment.id
         with transaction.atomic():
             allocation_qs = list(Allocation.objects.select_related(
                 'record').filter(payment=payment))
@@ -218,86 +243,112 @@ class PaymentViewSet(ModelViewSet):
 
             advanceledger_qs = list(AdvanceLedger.objects.filter(
                 payment=payment, direction="IN"))
+
             if advanceledger_qs:
                 party = payment.party
                 total_advance = sum(
                     balance.amount for balance in advanceledger_qs)
                 party.advance_balance -= total_advance
                 party.save(update_fields=["advance_balance"])
+
             for ledger in advanceledger_qs:
                 ledger.delete()
 
-            before_state = PaymentSerializer(payment).date
-
             payment.delete()
-
-            AuditLog.objects.create(
-                user=request.user,
-                model_name='Payment',
-                object_id=payment_id,
-                action='DELETE',
-                before=before_state,
-                after=None,
-                reason=request.data.get('reason')
-            )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         payment = self.get_object()
+
         payment_id = payment.id
-        before_state = PaymentSerializer(payment).data
-        serializer = self.get_serializer(payment, data=request.data, partial=True)
+
+        before_state = json.loads(
+            json.dumps(
+                PaymentSerializer(payment).data,
+                cls=DjangoJSONEncoder
+            )
+        )
+
+        serializer = self.get_serializer(
+            payment,
+            data=request.data,
+            partial=True
+        )
+
         serializer.is_valid(raise_exception=True)
+
         with transaction.atomic():
-            allocation_qs = list(Allocation.objects.select_related(
-                'record').filter(payment=payment))
+
+            allocation_qs = list(
+                Allocation.objects.select_related('record').filter(payment=payment))
+
             for allocation in allocation_qs:
                 record = allocation.record
                 record.paid_amount = max(
                     0,
                     record.paid_amount - allocation.amount
                 )
+
                 record.save(update_fields=['paid_amount'])
                 allocation.delete()
-                allocations.record.paid_amount -= allocations.amount
-                allocations.record.save(update_fields=['paid_amount'])
-                allocations.delete()
 
-            advanceledger_qs = list(AdvanceLedger.objects.filter(
-                payment=payment, direction="IN"))
+            advanceledger_qs = list(
+                AdvanceLedger.objects.filter(
+                    payment=payment,
+                    direction="IN"
+                )
+            )
+
             if advanceledger_qs:
                 party = payment.party
+
                 total_advance = sum(
                     balance.amount for balance in advanceledger_qs)
+
                 party.advance_balance -= total_advance
                 party.save(update_fields=["advance_balance"])
+
             for ledger in advanceledger_qs:
                 ledger.delete()
 
             payment = serializer.save()
-            remaining_payment = payment.amount
-            unpaid_records = Record.objects.filter(party=payment.party,
-                                                   paid_amount__lt=models.F('amount')).order_by('record_date')
 
-            for r in unpaid_records:
+            after_state = json.loads(
+                json.dumps(
+                    PaymentSerializer(payment).data,
+                    cls=DjangoJSONEncoder
+                )
+            )
+
+            remaining_payment = payment.amount
+
+            unpaid_records = Record.objects.filter(party=payment.party,
+                                                   paid_amount__lt=ExpressionWrapper(
+                                                       F('pcs') * F('rate'),
+                                                       output_field=DecimalField()
+                                                   )
+                                                   ).order_by('record_date')
+
+            for record in unpaid_records:
                 if remaining_payment <= 0:
                     break
-                allocated = min(r.remaining_amount, remaining_payment)
+                allocated = min(record.remaining_amount, remaining_payment)
 
                 Allocation.objects.create(
                     payment=payment,
                     amount=allocated,
-                    record=r
+                    record=record
                 )
 
-                r.paid_amount += allocated
-                r.save(update_fields=['paid_amount'])
+                record.paid_amount += allocated
+                record.save(update_fields=['paid_amount'])
 
                 remaining_payment -= allocated
 
             if remaining_payment > 0:
                 party = payment.party
+
                 AdvanceLedger.objects.create(
                     party=party,
                     payment=payment,
@@ -313,7 +364,7 @@ class PaymentViewSet(ModelViewSet):
                 object_id=payment_id,
                 action='UPDATE',
                 before=before_state,
-                after=PaymentSerializer(payment).data,
+                after=after_state,
                 reason=request.data.get('reason')
             )
 
@@ -336,10 +387,9 @@ class AdvanceLedgerViewSet(ReadOnlyModelViewSet):
         return AdvanceLedger.objects.filter(party__user=self.request.user)
 
 
-
 class AuditLogViewSet(ReadOnlyModelViewSet):
     serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return AuditLog.objects.filter(user= self.request.user)
+        return AuditLog.objects.filter(user=self.request.user)
