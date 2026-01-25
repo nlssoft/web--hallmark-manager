@@ -30,24 +30,27 @@ class Party(models.Model):
 
     @property
     def due(self):
-        total_work = self.record.aggregate(
+        total_work = self.record_set.aggregate(
             total=Sum(ExpressionWrapper(
                 F('rate') * F('pcs'),
                 output_field=DecimalField()
             )
-            )['total'] or Decimal('0.00')
-        )
+            )
+        )['total'] or Decimal('0.00')
 
-        total_paid = (self.payment.aggregate(
-            paid=Sum('amount'))['paid'] or Decimal('0.00')
-        )
+        total_paid = (self.payment_set.aggregate(
+            paid=Sum('amount'))
+        )['paid'] or Decimal('0.00')
 
-        return total_work - total_paid
+        d = total_work - total_paid
+        if d < 0:
+            return Decimal('0.00')
+        return d
 
 
 class Service_Type(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE, related_name='userst')
+                             on_delete=models.CASCADE)
     type_of_work = models.CharField(max_length=50, unique=True)
 
     def __str__(self) -> str:
