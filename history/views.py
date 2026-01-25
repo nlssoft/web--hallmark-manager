@@ -25,6 +25,8 @@ from .permissions import *
 class PartyViewSet(ModelViewSet):
     serializer_class = PartySerializer
     permission_classes = [IsAuthenticated, IsOwner]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['first_name', 'last_name']
 
     def get_queryset(self):
         return Party.objects.filter(user=self.request.user)
@@ -119,9 +121,9 @@ class RecordViewSet(ModelViewSet):
             for ledger in advanceledger_qs:
                 ledger.delete()
 
-                allocation_qs = list(Allocation.objects.filter(record=record))
-                for row in allocation_qs:
-                    row.delete()
+            allocation_qs = list(Allocation.objects.filter(record=record))
+            for row in allocation_qs:
+                row.delete()
 
             record.delete()
 
@@ -183,6 +185,16 @@ class PaymentViewSet(ModelViewSet):
     def get_queryset(self):
         return Payment.objects.filter(party__user=self.request.user)
 
+    def get_serializer_class(self):
+
+        if self.action in ['list', 'retrieve', 'create']:
+            return PaymentSerializer
+
+        elif self.action in ['update', 'partial_update']:
+            return PaymentUpdateSerializer
+
+        return PaymentSerializer
+
     def create(self, request, *args, **kwargs):
 
         serializer = self.get_serializer(data=request.data)
@@ -238,7 +250,7 @@ class PaymentViewSet(ModelViewSet):
 
             allocation_qs = list(Allocation.objects.select_related(
                 'record').filter(payment=payment))
-            
+
             for allocations in allocation_qs:
                 record = allocations.record
                 record.paid_amount = max(
@@ -249,7 +261,6 @@ class PaymentViewSet(ModelViewSet):
                 record.save(update_fields=['paid_amount'])
                 allocations.delete()
 
-
             advanceledger_qs = list(AdvanceLedger.objects.filter(
                 payment=payment, direction="IN"))
 
@@ -259,9 +270,9 @@ class PaymentViewSet(ModelViewSet):
 
                 total_advance = sum(
                     balance.amount for balance in advanceledger_qs)
-                
+
                 party.advance_balance -= total_advance
-                
+
                 party.save(update_fields=["advance_balance"])
 
             for ledger in advanceledger_qs:
@@ -313,7 +324,6 @@ class PaymentViewSet(ModelViewSet):
                 )
             )
 
-
             if advanceledger_qs:
                 party = payment.party
 
@@ -362,6 +372,7 @@ class PaymentViewSet(ModelViewSet):
 
             if remaining_payment > 0:
                 party = payment.party
+                party.refresh_from_db()
 
                 AdvanceLedger.objects.create(
                     party=party,

@@ -3,15 +3,17 @@ from .models import *
 
 
 class PartySerializer(serializers.ModelSerializer):
-    full = serializers.SerializerMethodField(method_name='p')
 
-    def p(self, party):
-        return f'{party.first_name} {party.last_name}'
+    due = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True
+    )
 
     class Meta:
         model = Party
         fields = ['id', 'first_name', 'last_name',
-                  'number', 'address', 'advance_balance', 'email',  'full']
+                  'number', 'address', 'advance_balance', 'due', 'email']
 
         read_only_fields = ['id', 'advance_balance']
 
@@ -30,6 +32,7 @@ class Work_RateSerializer(serializers.ModelSerializer):
         decimal_places=2,
         min_value=0
     )
+
     class Meta:
         model = Work_Rate
         fields = ['id', 'rate', 'party', 'service_type']
@@ -56,7 +59,7 @@ class RecordUpdateSerializer(serializers.ModelSerializer):
     reason = serializers.CharField(
         max_length=255,
         required=False,
-        write_only=True  )
+        write_only=True)
 
     class Meta:
         model = Record
@@ -89,8 +92,6 @@ class RecordCreateSerializer(serializers.ModelSerializer):
         required=False,   # 👈 key line
         min_value=0
     )
-
-
 
     discount = serializers.DecimalField(
         max_digits=10,
@@ -148,14 +149,27 @@ class PaymentSerializer(serializers.ModelSerializer):
         decimal_places=2,
         min_value=1)
 
+    class Meta:
+        model = Payment
+        fields = ['id', 'party', 'amount', 'payment_date']
+
+
+class PaymentUpdateSerializer(serializers.ModelSerializer):
     reason = serializers.CharField(
         max_length=255,
         required=False,
-        write_only=True  )
+        write_only=True
+    )
+
+    amount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=1
+    )
 
     class Meta:
         model = Payment
-        fields = ['id', 'party', 'amount', 'payment_date', 'reason']
+        fields = ['id', 'amount', 'payment_date', 'reason']
 
 
 class AllocationSerializer(serializers.ModelSerializer):

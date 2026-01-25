@@ -3,11 +3,13 @@ from django.utils.timezone import now
 from decimal import Decimal
 from django.conf import settings
 from django.utils.timezone import localdate
+from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+from decimal import Decimal
 
 
 class Party(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE)
+                             on_delete=models.CASCADE, related_name='user')
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255, blank=True, null=True)
     number = models.CharField(max_length=255, null=True,  blank=True)
@@ -26,10 +28,26 @@ class Party(models.Model):
     class Meta:
         ordering = ['first_name', 'last_name']
 
+    @property
+    def due(self):
+        total_work = self.record.aggregate(
+            total=Sum(ExpressionWrapper(
+                F('rate') * F('pcs'),
+                output_field=DecimalField()
+            )
+            )['total'] or Decimal('0.00')
+        )
+
+        total_paid = (self.payment.aggregate(
+            paid=Sum('amount'))['paid'] or Decimal('0.00')
+        )
+
+        return total_work - total_paid
+
 
 class Service_Type(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE)
+                             on_delete=models.CASCADE, related_name='userst')
     type_of_work = models.CharField(max_length=50, unique=True)
 
     def __str__(self) -> str:
