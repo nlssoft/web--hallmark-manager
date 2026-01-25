@@ -25,6 +25,11 @@ class Service_TypeSerializer(serializers.ModelSerializer):
 
 
 class Work_RateSerializer(serializers.ModelSerializer):
+    rate = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=0
+    )
     class Meta:
         model = Work_Rate
         fields = ['id', 'rate', 'party', 'service_type']
@@ -48,9 +53,14 @@ class RecordUpdateSerializer(serializers.ModelSerializer):
         required=False
     )
 
+    reason = serializers.CharField(
+        max_length=255,
+        required=False,
+        write_only=True  )
+
     class Meta:
         model = Record
-        fields = ['rate', 'pcs', 'discount']
+        fields = ['rate', 'pcs', 'discount', 'reason']
 
 
 class RecordSerializer(serializers.ModelSerializer):
@@ -80,12 +90,7 @@ class RecordCreateSerializer(serializers.ModelSerializer):
         min_value=0
     )
 
-    amount = serializers.DecimalField(
-        read_only=True,
-        max_digits=10,
-        decimal_places=2,
-        min_value=0
-    )
+
 
     discount = serializers.DecimalField(
         max_digits=10,
@@ -104,7 +109,7 @@ class RecordCreateSerializer(serializers.ModelSerializer):
             'discount',
             'rate',
             'rate_mode',
-            'amount'
+            'record_date'
         ]
 
     def create(self, validated_data):
@@ -143,15 +148,20 @@ class PaymentSerializer(serializers.ModelSerializer):
         decimal_places=2,
         min_value=1)
 
+    reason = serializers.CharField(
+        max_length=255,
+        required=False,
+        write_only=True  )
+
     class Meta:
         model = Payment
-        fields = ['id', 'party', 'amount', 'payment_date']
+        fields = ['id', 'party', 'amount', 'payment_date', 'reason']
 
 
 class AllocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Allocation
-        fields = ['party', 'amount', 'record']
+        fields = ['amount', 'payment', 'record']
 
 
 class AdvanceLedgerSerializer(serializers.ModelSerializer):
@@ -163,6 +173,6 @@ class AdvanceLedgerSerializer(serializers.ModelSerializer):
 
 class AuditLogSerializer(serializers.ModelSerializer):
     class Meta:
-        models = AuditLog
-        fields = ['object_id', 'model_name', 'action',
+        model = AuditLog
+        fields = ['user', 'object_id', 'model_name', 'action',
                   'before', 'after', 'reason', 'created_at']

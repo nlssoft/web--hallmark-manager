@@ -56,7 +56,7 @@ class Record(models.Model):
     service_type = models.ForeignKey(Service_Type, on_delete=models.PROTECT)
     pcs = models.PositiveIntegerField()
     rate = models.DecimalField(max_digits=10, decimal_places=2)
-    record_date = models.DateField(default=now)
+    record_date = models.DateField(default=localdate)
     discount = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00"))
     paid_amount = models.DecimalField(

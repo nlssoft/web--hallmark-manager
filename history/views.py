@@ -233,22 +233,35 @@ class PaymentViewSet(ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         payment = self.get_object()
+
         with transaction.atomic():
+
             allocation_qs = list(Allocation.objects.select_related(
                 'record').filter(payment=payment))
+            
             for allocations in allocation_qs:
-                allocations.record.paid_amount -= allocations.amount
-                allocations.record.save(update_fields=['paid_amount'])
+                record = allocations.record
+                record.paid_amount = max(
+                    0,
+                    record.paid_amount - allocation.amount
+                )
+
+                record.save(update_fields=['paid_amount'])
                 allocations.delete()
+
 
             advanceledger_qs = list(AdvanceLedger.objects.filter(
                 payment=payment, direction="IN"))
 
             if advanceledger_qs:
+
                 party = payment.party
+
                 total_advance = sum(
                     balance.amount for balance in advanceledger_qs)
+                
                 party.advance_balance -= total_advance
+                
                 party.save(update_fields=["advance_balance"])
 
             for ledger in advanceledger_qs:
@@ -299,6 +312,10 @@ class PaymentViewSet(ModelViewSet):
                     direction="IN"
                 )
             )
+
+            print("ADV LEDGERS RAW:", list(AdvanceLedger.objects.filter(payment=payment).values("id", "direction"))
+)
+
 
             if advanceledger_qs:
                 party = payment.party
