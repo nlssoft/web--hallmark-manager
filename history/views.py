@@ -313,9 +313,6 @@ class PaymentViewSet(ModelViewSet):
                 )
             )
 
-            print("ADV LEDGERS RAW:", list(AdvanceLedger.objects.filter(payment=payment).values("id", "direction"))
-)
-
 
             if advanceledger_qs:
                 party = payment.party
