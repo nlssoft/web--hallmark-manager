@@ -1,5 +1,9 @@
 from rest_framework import serializers
+from django.utils.timezone import timedelta
+from django.utils.timezone import localdate
 from .models import *
+
+
 
 
 class PartySerializer(serializers.ModelSerializer):
@@ -10,12 +14,18 @@ class PartySerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    advance_balance  = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+
+    )
+
     class Meta:
         model = Party
-        fields = ['id', 'first_name', 'last_name',
+        fields = ['id', 'logo', 'first_name', 'last_name', 
                   'number', 'address', 'advance_balance', 'due', 'email']
 
-        read_only_fields = ['id', 'advance_balance']
 
 
 class Service_TypeSerializer(serializers.ModelSerializer):
@@ -64,7 +74,7 @@ class RecordUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Record
         fields = ['rate', 'pcs', 'discount', 'reason']
-
+        
 
 class RecordSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(
@@ -153,6 +163,18 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = ['id', 'party', 'amount', 'payment_date']
 
+    def validate_payment_date(self, value):
+        delta = localdate() - value
+
+        if delta < timedelta(days=0):
+            raise serializers.ValidationError(
+                "Payment date cannot be in the future."
+            )
+        if delta > timedelta(days=7):
+            raise serializers.ValidationError(
+                "Cannot create payments older than 7 days."
+            )
+        return value
 
 class PaymentUpdateSerializer(serializers.ModelSerializer):
     reason = serializers.CharField(
@@ -181,7 +203,7 @@ class AllocationSerializer(serializers.ModelSerializer):
 class AdvanceLedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdvanceLedger
-        fields = ['party', 'payment', 'record',
+        fields = ['id','party', 'payment', 'record',
                   'amount', 'direction', 'created_at']
 
 

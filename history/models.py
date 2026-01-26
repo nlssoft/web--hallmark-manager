@@ -15,8 +15,7 @@ class Party(models.Model):
     number = models.CharField(max_length=255, null=True,  blank=True)
     email = models.EmailField(max_length=255, blank=True, unique=True)
     address = models.TextField(blank=True,  null=True,)
-    advance_balance = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    logo  = models.CharField(max_length=10)
 
     @property
     def owner(self):
@@ -41,12 +40,20 @@ class Party(models.Model):
         total_paid = (self.payment_set.aggregate(
             paid=Sum('amount'))
         )['paid'] or Decimal('0.00')
-
-        d = total_work - total_paid
-        if d < 0:
+        current = total_work - total_paid
+        if current <0:
             return Decimal('0.00')
-        return d
+        return current
 
+    @property
+    def advance_balance(self):
+        result= self.advance_ledger_set.filter(
+            direction = "IN"
+        ).aggregate(
+            total = Sum('remaining_amount')
+            )
+        
+        return result['total'] or Decimal('0.00')
 
 class Service_Type(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
@@ -141,12 +148,35 @@ class Note(models.Model):
 
 
 class AdvanceLedger(models.Model):
-    party = models.ForeignKey(Party, on_delete=models.CASCADE)
+    party = models.ForeignKey(
+        Party,
+        on_delete=models.CASCADE
+    )
+
     payment = models.ForeignKey(
-        Payment, blank=True, null=True, on_delete=models.SET_NULL)
+        Payment,
+        blank=True, 
+        null=True, 
+        on_delete=models.SET_NULL
+    )
+
     record = models.ForeignKey(
-        Record, blank=True, null=True, on_delete=models.SET_NULL)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+        Record,
+        blank=True, 
+        null=True, 
+        on_delete=models.SET_NULL
+    )
+
+    amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2
+    )
+
+    remaining_amount = models.DecimalField(
+        max_digits= 10,
+        decimal_places=2
+    )
+
     direction = models.CharField(
         max_length=3,
         choices=[("IN", "IN"), ("OUT", "OUT")]
