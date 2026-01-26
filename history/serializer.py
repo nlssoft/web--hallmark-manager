@@ -4,17 +4,16 @@ from django.utils.timezone import localdate
 from .models import *
 
 
-
-
 class PartySerializer(serializers.ModelSerializer):
 
     due = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
-        read_only=True
+        read_only=True,
+
     )
 
-    advance_balance  = serializers.DecimalField(
+    advance_balance = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
         read_only=True,
@@ -23,9 +22,8 @@ class PartySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Party
-        fields = ['id', 'logo', 'first_name', 'last_name', 
+        fields = ['id', 'logo', 'first_name', 'last_name',
                   'number', 'address', 'advance_balance', 'due', 'email']
-
 
 
 class Service_TypeSerializer(serializers.ModelSerializer):
@@ -74,7 +72,7 @@ class RecordUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Record
         fields = ['rate', 'pcs', 'discount', 'reason']
-        
+
 
 class RecordSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(
@@ -176,6 +174,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             )
         return value
 
+
 class PaymentUpdateSerializer(serializers.ModelSerializer):
     reason = serializers.CharField(
         max_length=255,
@@ -203,12 +202,12 @@ class AllocationSerializer(serializers.ModelSerializer):
 class AdvanceLedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdvanceLedger
-        fields = ['id','party', 'payment', 'record',
+        fields = ['id', 'party', 'payment', 'record',
                   'amount', 'direction', 'created_at']
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuditLog
-        fields = ['user', 'object_id', 'model_name', 'action',
+        fields = ['object_id', 'model_name', 'action',
                   'before', 'after', 'reason', 'created_at']

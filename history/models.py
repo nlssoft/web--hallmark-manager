@@ -15,7 +15,7 @@ class Party(models.Model):
     number = models.CharField(max_length=255, null=True,  blank=True)
     email = models.EmailField(max_length=255, blank=True, unique=True)
     address = models.TextField(blank=True,  null=True,)
-    logo  = models.CharField(max_length=10)
+    logo = models.CharField(max_length=10)
 
     @property
     def owner(self):
@@ -41,19 +41,20 @@ class Party(models.Model):
             paid=Sum('amount'))
         )['paid'] or Decimal('0.00')
         current = total_work - total_paid
-        if current <0:
+        if current < 0:
             return Decimal('0.00')
         return current
 
     @property
     def advance_balance(self):
-        result= self.advance_ledger_set.filter(
-            direction = "IN"
+        result = self.advanceledger_set.filter(
+            direction="IN"
         ).aggregate(
-            total = Sum('remaining_amount')
-            )
-        
+            total=Sum('remaining_amount')
+        )
+
         return result['total'] or Decimal('0.00')
+
 
 class Service_Type(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
@@ -155,25 +156,25 @@ class AdvanceLedger(models.Model):
 
     payment = models.ForeignKey(
         Payment,
-        blank=True, 
-        null=True, 
+        blank=True,
+        null=True,
         on_delete=models.SET_NULL
     )
 
     record = models.ForeignKey(
         Record,
-        blank=True, 
-        null=True, 
+        blank=True,
+        null=True,
         on_delete=models.SET_NULL
     )
 
     amount = models.DecimalField(
-        max_digits=10, 
+        max_digits=10,
         decimal_places=2
     )
 
     remaining_amount = models.DecimalField(
-        max_digits= 10,
+        max_digits=10,
         decimal_places=2
     )
 
@@ -200,3 +201,5 @@ class AuditLog(models.Model):
     after = models.JSONField(null=True, blank=True)
     reason = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    party = models.ForeignKey(
+        Party, on_delete=models.SET_NULL, null=True)
