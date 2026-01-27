@@ -137,16 +137,6 @@ class Allocation(models.Model):
         return f'{self.record} | {self.amount} | {self.payment}'
 
 
-class Note(models.Model):
-    record = models.ForeignKey(Record, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
-    description = models.TextField()
-    created = models.DateField(auto_now_add=True)
-
-    @property
-    def owner(self):
-        return self.record.party.user
-
 
 class AdvanceLedger(models.Model):
     party = models.ForeignKey(

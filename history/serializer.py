@@ -141,15 +141,6 @@ class RecordCreateSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class NoteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Note
-        fields = ['id', 'name', 'description', 'created']
-
-    def create(self, validated_data):
-        record_id = self.context['record_id']
-        return Note.objects.create(record_id=record_id, **validated_data)
-
 
 class PaymentSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(

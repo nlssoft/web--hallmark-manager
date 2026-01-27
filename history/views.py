@@ -298,16 +298,6 @@ class RecordViewSet(ModelViewSet):
         return Response(self.get_serializer(record).data, status=status.HTTP_200_OK)
 
 
-class NoteViewSet(ModelViewSet):
-    serializer_class = NoteSerializer
-    permission_classes = [IsAuthenticated, IsOwner]
-
-    def get_queryset(self):
-        return Note.objects.filter(record__party__user=self.request.user,
-                                   record_id=self.kwargs['record_pk'])
-
-    def get_serializer_context(self):
-        return {'record_id': self.kwargs['record_pk']}
 
 
 class PaymentViewSet(ModelViewSet):
