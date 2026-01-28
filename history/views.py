@@ -38,8 +38,13 @@ class PartyViewSet(ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         party = self.get_object()
-        if Record.objects.filter(party=party).exists():
-            return Response({'error': 'party can not be deleted because its accoiated with records'})
+        if (
+            Record.objects.filter(party=party).exists() 
+            or 
+            Payment.objects.filter(party=party).exists()
+        ):
+            return Response({'error': 'party can not be deleted because its accoiated with records'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         return super().destroy(request, *args, **kwargs)
 

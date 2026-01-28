@@ -13,8 +13,8 @@ class Party(models.Model):
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255, blank=True, null=True)
     number = models.CharField(max_length=255, null=True,  blank=True)
-    email = models.EmailField(max_length=255, blank=True, unique=True)
-    address = models.TextField(blank=True,  null=True,)
+    email = models.EmailField(max_length=255, blank=True, null=True, unique=True)
+    address = models.TextField( null=True, blank = True)
     logo = models.CharField(max_length=10)
 
     @property

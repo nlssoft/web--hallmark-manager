@@ -22,8 +22,16 @@ class PartySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Party
-        fields = ['id', 'logo', 'first_name', 'last_name',
-                  'number', 'address', 'advance_balance', 'due', 'email']
+        fields = ['id',
+                   'logo', 
+                   'first_name', 
+                   'last_name',
+                    'number',
+                    'email',
+                    'address',
+                    'due',
+                    'advance_balance'
+                ]
 
 
 class Service_TypeSerializer(serializers.ModelSerializer):
