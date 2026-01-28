@@ -1,0 +1,115 @@
+/* Page layout */
+.parties-page {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.parties-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.parties-header h1 {
+    margin: 0;
+}
+
+/* Card */
+.card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    margin-bottom: 32px;
+}
+
+/* Create form */
+.party-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.party-form input {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+.party-form button {
+    grid-column: span 2;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.party-form button:hover {
+    background: #1d4ed8;
+}
+
+/* Errors */
+.form-error {
+    color: #dc2626;
+    font-size: 14px;
+}
+
+/* Search */
+.search-box {
+    margin-bottom: 16px;
+}
+
+.search-box input {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+/* Table */
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.party-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.party-table th,
+.party-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+}
+
+.party-table th {
+    background: #f9fafb;
+    font-weight: 600;
+}
+
+.party-table a {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+/* Footer */
+.page-footer {
+    margin-top: 40px;
+    text-align: center;
+}
+
+.back-btn {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    background: #e5e7eb;
+    cursor: pointer;
+}

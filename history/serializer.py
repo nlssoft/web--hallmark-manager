@@ -23,15 +23,15 @@ class PartySerializer(serializers.ModelSerializer):
     class Meta:
         model = Party
         fields = ['id',
-                   'logo', 
-                   'first_name', 
-                   'last_name',
-                    'number',
-                    'email',
-                    'address',
-                    'due',
-                    'advance_balance'
-                ]
+                  'logo',
+                  'first_name',
+                  'last_name',
+                  'number',
+                  'email',
+                  'address',
+                  'due',
+                  'advance_balance'
+                  ]
 
 
 class Service_TypeSerializer(serializers.ModelSerializer):
@@ -49,9 +49,25 @@ class Work_RateSerializer(serializers.ModelSerializer):
         min_value=0
     )
 
+    party__first_name = serializers.CharField(
+        source='party.first_name',
+        read_only=True
+    )
+
+    party__last_name = serializers.CharField(
+        source='party.last_name',
+        read_only=True
+    )
+
+    party__logo = serializers.CharField(
+        source='party.logo',
+        read_only=True
+    )
+
     class Meta:
         model = Work_Rate
-        fields = ['id', 'rate', 'party', 'service_type']
+        fields = ['id', 'party__first_name', 'party__last_name',
+                  'party__logo', 'rate', 'party', 'service_type']
 
 
 class RecordUpdateSerializer(serializers.ModelSerializer):
@@ -147,7 +163,6 @@ class RecordCreateSerializer(serializers.ModelSerializer):
                 validated_data['rate'] = work_rate.rate
 
         return super().create(validated_data)
-
 
 
 class PaymentSerializer(serializers.ModelSerializer):

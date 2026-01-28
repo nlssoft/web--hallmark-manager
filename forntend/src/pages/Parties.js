@@ -1,55 +1,189 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import "./Parties.css";
+
+const MAX_LOGO = 10;
+const MAX_TEXT = 255;
 
 export default function Parties() {
+  const navigate = useNavigate();
+
   const [parties, setParties] = useState([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState("");
+
+  const [form, setForm] = useState({
+    first_name: "",
+    last_name: "",
+    logo: "",
+    number: "",
+    address: "",
+    email: "",
+  });
 
   useEffect(() => {
-    setLoading(true);
+    loadParties();
+  }, []);
 
-    api.get("/history/party/", {
-      params: search
-        ? {
-            first_name: search,
-            last_name: search,
-            logo: search,
-          }
-        : {},
-    })
-      .then(res => setParties(res.data))
-      .catch(() => setError("Failed to load parties"))
-      .finally(() => setLoading(false));
-  }, [search]);
+  const loadParties = async () => {
+    const res = await api.get("/history/party/");
+    setParties(res.data);
+  };
 
-  if (loading) return <p>Loading parties...</p>;
-  if (error) return <p>{error}</p>;
+  // ---------- VALIDATION ----------
+  const validate = () => {
+    const e = {};
+
+    if (!form.logo.trim()) {
+      e.logo = "Logo is required";
+    } else if (form.logo.length > MAX_LOGO) {
+      e.logo = "Logo max length is 10";
+    }
+
+    if (!form.first_name.trim()) {
+      e.first_name = "First name is required";
+    } else if (form.first_name.length > MAX_TEXT) {
+      e.first_name = "First name too long";
+    }
+
+    if (form.last_name.length > MAX_TEXT) {
+      e.last_name = "Last name too long";
+    }
+
+    if (form.number.length > MAX_TEXT) {
+      e.number = "Phone too long";
+    }
+
+    if (form.email.length > MAX_TEXT) {
+      e.email = "Email too long";
+    }
+
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  // ---------- SUBMIT ----------
+  const submit = async (e) => {
+    e.preventDefault();
+    setServerError("");
+
+    if (!validate()) return;
+
+    // 🔑 CONVERT EMPTY STRINGS TO NULL
+    const payload = {
+      ...form,
+      last_name: form.last_name || null,
+      number: form.number || null,
+      email: form.email || null,
+      address: form.address || null,
+    };
+
+    try {
+      await api.post("/history/party/", payload);
+
+      setForm({
+        first_name: "",
+        last_name: "",
+        logo: "",
+        number: "",
+        address: "",
+        email: "",
+      });
+
+      setErrors({});
+      loadParties();
+    } catch (err) {
+      setServerError("Failed to create party. Check unique fields (email).");
+    }
+  };
+
+  const filtered = parties.filter((p) =>
+    `${p.first_name} ${p.last_name} ${p.logo}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  );
 
   return (
-    <div style={{ display: "flex", gap: "24px" }}>
-      
-      {/* LEFT: Create */}
-      <div style={{ width: "280px" }}>
-        <Link to="/parties/create">
-          <button>Create Party</button>
-        </Link>
+    <div className="parties-page">
+      <div className="parties-header">
+        <h1>Parties</h1>
+        <button className="back-btn" onClick={() => navigate("/dashboard")}>
+          ← Back to Dashboard
+        </button>
       </div>
 
-      {/* RIGHT: List */}
-      <div style={{ flex: 1 }}>
-        <h1>Parties</h1>
+      {/* CREATE PARTY */}
+      <div className="card">
+        <h3>Create Party</h3>
 
+        {serverError && (
+          <div className="form-error">{serverError}</div>
+        )}
+
+        <form className="party-form" onSubmit={submit}>
+          <input
+            placeholder="Logo *"
+            maxLength={MAX_LOGO}
+            value={form.logo}
+            onChange={e => setForm({ ...form, logo: e.target.value })}
+          />
+          {errors.logo && <div className="form-error">{errors.logo}</div>}
+
+          <input
+            placeholder="First name *"
+            maxLength={MAX_TEXT}
+            value={form.first_name}
+            onChange={e => setForm({ ...form, first_name: e.target.value })}
+          />
+          {errors.first_name && (
+            <div className="form-error">{errors.first_name}</div>
+          )}
+
+          <input
+            placeholder="Last name"
+            maxLength={MAX_TEXT}
+            value={form.last_name}
+            onChange={e => setForm({ ...form, last_name: e.target.value })}
+          />
+
+          <input
+            placeholder="Phone"
+            maxLength={MAX_TEXT}
+            value={form.number}
+            onChange={e => setForm({ ...form, number: e.target.value })}
+          />
+
+          <input
+            placeholder="Email"
+            maxLength={MAX_TEXT}
+            value={form.email}
+            onChange={e => setForm({ ...form, email: e.target.value })}
+          />
+
+          <input
+            placeholder="Address"
+            value={form.address}
+            onChange={e => setForm({ ...form, address: e.target.value })}
+          />
+
+          <button type="submit">Create Party</button>
+        </form>
+      </div>
+
+      {/* SEARCH */}
+      <div className="search-box">
         <input
           placeholder="Search by name or logo"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ marginBottom: "12px", width: "300px" }}
         />
+      </div>
 
-        <table border="1" cellPadding="8" width="100%">
+      {/* TABLE */}
+      <div className="card table-wrapper">
+        <table className="party-table">
           <thead>
             <tr>
               <th>Logo</th>
@@ -60,19 +194,16 @@ export default function Parties() {
               <th>Actions</th>
             </tr>
           </thead>
-
           <tbody>
-            {parties.map(p => (
+            {filtered.map(p => (
               <tr key={p.id}>
                 <td>{p.logo}</td>
                 <td>{p.first_name} {p.last_name}</td>
-                <td>{p.address || "-"}</td>
+                <td>{p.address}</td>
                 <td>{p.due}</td>
                 <td>{p.advance_balance}</td>
                 <td>
-                  <Link to={`/parties/${p.id}`}>
-                    <button>View</button>
-                  </Link>
+                  <Link to={`/parties/${p.id}`}>View</Link>
                 </td>
               </tr>
             ))}
@@ -80,6 +211,11 @@ export default function Parties() {
         </table>
       </div>
 
+      <div className="page-footer">
+        <button className="back-btn" onClick={() => navigate("/dashboard")}>
+          ← Back to Dashboard
+        </button>
+      </div>
     </div>
   );
 }
