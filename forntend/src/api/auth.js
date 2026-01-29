@@ -1,6 +1,6 @@
 import api from "./axios";
 
-export const login = (username, password) =>
+export const loginRequest = (username, password) =>
   api.post("/auth/jwt/create/", { username, password });
 
 export const me = () =>

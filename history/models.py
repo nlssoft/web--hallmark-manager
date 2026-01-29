@@ -108,7 +108,7 @@ class Record(models.Model):
 
     @property
     def amount(self):
-        return self.rate * self.pcs
+        return (self.rate * self.pcs) - self.discount
 
     class Meta:
         permissions = [

@@ -100,7 +100,7 @@ class RecordViewSet(ModelViewSet):
         ).select_related(
             'party',
             'service_type'
-        )
+        ).order_by('-record_date', '-pk')
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

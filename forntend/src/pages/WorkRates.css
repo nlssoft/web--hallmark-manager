@@ -1,0 +1,155 @@
+/* ---------- PAGE ---------- */
+
+.wr-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.wr-header h1 {
+  font-size: 2.6rem;
+}
+
+.wr-header p {
+  color: #94a3b8;
+  margin-bottom: 32px;
+}
+
+/* ---------- FORM ---------- */
+
+.wr-form {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr auto;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.wr-form input,
+.wr-form select {
+  padding: 14px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  color: white;
+}
+
+.wr-form button {
+  padding: 14px 22px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  border: none;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ---------- AUTOCOMPLETE ---------- */
+
+.autocomplete {
+  position: relative;
+}
+
+.autocomplete-list {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  right: 0;
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.autocomplete-item {
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.autocomplete-item:hover {
+  background: #1e293b;
+}
+
+.autocomplete-item span {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+/* ---------- SEARCH ---------- */
+
+.wr-search {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  background: #020617;
+  border: 1px solid #1e293b;
+  color: white;
+  margin-bottom: 24px;
+}
+
+/* ---------- LIST ---------- */
+
+.wr-table {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wr-row {
+  display: grid;
+  grid-template-columns: 1fr auto 80px;
+  align-items: center;
+  gap: 24px; /* 👈 THIS IS THE FIX */
+  padding: 22px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #020617, #020617cc);
+  border: 1px solid #1e293b;
+}
+
+.wr-row .view {
+  text-align: right;
+}
+
+
+.wr-row .muted {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.wr-row .rate {
+  font-weight: 700;
+}
+
+.wr-row .view {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+/* ---------- BACK ---------- */
+
+.back-btn {
+  margin: 48px auto 0;
+  display: block;
+  padding: 14px 24px;
+  border-radius: 16px;
+  background: #020617;
+  border: 1px solid #1e293b;
+  color: white;
+  cursor: pointer;
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+@media (max-width: 900px) {
+  .wr-form {
+    grid-template-columns: 1fr;
+  }
+
+  .wr-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

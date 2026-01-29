@@ -105,9 +105,30 @@ class RecordSerializer(serializers.ModelSerializer):
         decimal_places=2
     )
 
+    party__first_name = serializers.CharField(
+        source='party.first_name',
+        read_only=True
+    )
+
+    party__last_name = serializers.CharField(
+        source='party.last_name',
+        read_only=True
+    )
+
+    party__logo = serializers.CharField(
+        source='party.logo',
+        read_only=True
+    )
+
+    service_type__type_of_work = serializers.CharField(
+        source = 'service_type.type_of_work',
+        read_only=True
+    )
+
     class Meta:
         model = Record
-        fields = ['id', 'party', 'service_type', 'rate',
+        fields = ['id', 'party','party__first_name', 'party__last_name',
+                  'party__logo', 'service_type','service_type__type_of_work', 'rate',
                   'pcs', 'record_date', 'discount', 'amount', 'paid_amount']
         read_only_fields = ['paid_amount']
 

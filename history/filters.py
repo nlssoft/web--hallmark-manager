@@ -79,13 +79,8 @@ class RecordFilter(FilterSet):
         lookup_expr='gte'
     )
 
-    paid_amount_gt = filters.RangeFilter(
-        field_name='paid_amount',
-        lookup_expr='gte')
-
-    paid_amount_lt = filters.NumberFilter(
-        field_name='paid_amount',
-        lookup_expr='lte'
+    paid_amount = filters.RangeFilter(
+        field_name='paid_amount'
     )
 
     class Meta:
@@ -93,8 +88,7 @@ class RecordFilter(FilterSet):
         fields = [
             'date_range',
             'discount',
-            'paid_amount_gt',
-            'paid_amount_lt',
+            'paid_amount',
         ]
 
 

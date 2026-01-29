@@ -3,17 +3,18 @@ import { create } from "zustand";
 const useAuthStore = create((set) => ({
   access: localStorage.getItem("access"),
   refresh: localStorage.getItem("refresh"),
-  user: null,
+  isAuthenticated: !!localStorage.getItem("access"),
 
-  login: ({ access, refresh }) => {
+  login: (access, refresh) => {
     localStorage.setItem("access", access);
     localStorage.setItem("refresh", refresh);
-    set({ access, refresh });
+    set({ access, refresh, isAuthenticated: true });
   },
 
   logout: () => {
-    localStorage.clear();
-    set({ access: null, refresh: null, user: null });
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    set({ access: null, refresh: null, isAuthenticated: false });
   },
 }));
 

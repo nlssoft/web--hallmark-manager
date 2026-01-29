@@ -6,19 +6,22 @@ import { useNavigate } from "react-router-dom";
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const login = useAuthStore(state => state.login);
+  const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
 
   const submit = async (e) => {
     e.preventDefault();
+    try {
+      const res = await api.post("/auth/jwt/create/", {
+        username,
+        password,
+      });
 
-    const res = await api.post("/auth/jwt/create/", {
-      username,
-      password,
-    });
-
-    login(res.data);
-    navigate("/dashboard");
+      login(res.data.access, res.data.refresh);
+      navigate("/dashboard");
+    } catch (err) {
+      alert("Invalid credentials");
+    }
   };
 
   return (
@@ -26,16 +29,16 @@ export default function Login() {
       <h2>Login</h2>
 
       <input
-        placeholder="username"
+        placeholder="Username"
         value={username}
-        onChange={e => setUsername(e.target.value)}
+        onChange={(e) => setUsername(e.target.value)}
       />
 
       <input
         type="password"
-        placeholder="password"
+        placeholder="Password"
         value={password}
-        onChange={e => setPassword(e.target.value)}
+        onChange={(e) => setPassword(e.target.value)}
       />
 
       <button type="submit">Login</button>
