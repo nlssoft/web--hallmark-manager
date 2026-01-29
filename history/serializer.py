@@ -120,15 +120,20 @@ class RecordSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    party__address = serializers.CharField(
+        source='party.address',
+        read_only=True
+    )
+
     service_type__type_of_work = serializers.CharField(
-        source = 'service_type.type_of_work',
+        source='service_type.type_of_work',
         read_only=True
     )
 
     class Meta:
         model = Record
-        fields = ['id', 'party','party__first_name', 'party__last_name',
-                  'party__logo', 'service_type','service_type__type_of_work', 'rate',
+        fields = ['id', 'party', 'party__logo', 'party__first_name', 'party__last_name', 'party__address',
+                  'service_type', 'service_type__type_of_work', 'rate',
                   'pcs', 'record_date', 'discount', 'amount', 'paid_amount']
         read_only_fields = ['paid_amount']
 
@@ -137,6 +142,11 @@ class RecordCreateSerializer(serializers.ModelSerializer):
     rate_mode = serializers.ChoiceField(
         choices=['system', 'manual'],
         write_only=True
+    )
+
+    party__address = serializers.CharField(
+        source='party.address',
+        read_only=True
     )
 
     rate = serializers.DecimalField(
@@ -163,7 +173,8 @@ class RecordCreateSerializer(serializers.ModelSerializer):
             'discount',
             'rate',
             'rate_mode',
-            'record_date'
+            'record_date',
+            'party__address'
         ]
 
     def create(self, validated_data):
@@ -192,9 +203,25 @@ class PaymentSerializer(serializers.ModelSerializer):
         decimal_places=2,
         min_value=1)
 
+    party__first_name = serializers.CharField(
+        source='party.first_name',
+        read_only=True
+    )
+
+    party__last_name = serializers.CharField(
+        source='party.last_name',
+        read_only=True
+    )
+
+    party__logo = serializers.CharField(
+        source='party.logo',
+        read_only=True
+    )
+
     class Meta:
         model = Payment
-        fields = ['id', 'party', 'amount', 'payment_date']
+        fields = ['id', 'party', 'party__logo', 'party__first_name',
+                  'party__last_name', 'amount', 'payment_date']
 
     def validate_payment_date(self, value):
         delta = localdate() - value

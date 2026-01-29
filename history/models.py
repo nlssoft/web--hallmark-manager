@@ -60,10 +60,16 @@ class Party(models.Model):
 class Service_Type(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
                              on_delete=models.CASCADE)
-    type_of_work = models.CharField(max_length=50, unique=True)
+    type_of_work = models.CharField(max_length=50)
 
     def __str__(self) -> str:
         return self.type_of_work
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'type_of_work'], name='unique_user_type_of_work')
+        ]
 
 
 class Work_Rate(models.Model):

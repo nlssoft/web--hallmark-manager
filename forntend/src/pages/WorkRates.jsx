@@ -9,7 +9,6 @@ export default function WorkRates() {
   const [rates, setRates] = useState([]);
   const [parties, setParties] = useState([]);
   const [services, setServices] = useState([]);
-
   const [search, setSearch] = useState("");
 
   const [form, setForm] = useState({
@@ -18,25 +17,21 @@ export default function WorkRates() {
     rate: "",
   });
 
-  /* ---------- AUTOCOMPLETE STATE ---------- */
   const [partyQuery, setPartyQuery] = useState("");
   const [showPartyList, setShowPartyList] = useState(false);
 
-  /* ---------- LOAD DATA ---------- */
   useEffect(() => {
     api.get("/history/work-rate/").then(res => setRates(res.data));
     api.get("/history/party/").then(res => setParties(res.data));
     api.get("/history/service-type/").then(res => setServices(res.data));
   }, []);
 
-  /* ---------- FILTER PARTY AUTOCOMPLETE ---------- */
   const filteredParties = parties.filter(p =>
     `${p.first_name} ${p.last_name} ${p.logo}`
       .toLowerCase()
       .includes(partyQuery.toLowerCase())
   );
 
-  /* ---------- CREATE RATE ---------- */
   const submit = async (e) => {
     e.preventDefault();
 
@@ -53,7 +48,6 @@ export default function WorkRates() {
     setRates(res.data);
   };
 
-  /* ---------- SEARCH ---------- */
   const filteredRates = rates.filter(r =>
     `${r.party__first_name} ${r.party__last_name} ${r.party__logo}`
       .toLowerCase()
@@ -62,17 +56,16 @@ export default function WorkRates() {
 
   return (
     <div className="wr-page">
-      <div className="wr-header">
+      <header className="wr-header">
         <h1>Work Rates</h1>
-        <p>Rates per party & service</p>
-      </div>
+        <p>Rates per party and service</p>
+      </header>
 
-      {/* ---------- CREATE FORM ---------- */}
-      <form className="wr-form" onSubmit={submit}>
-        {/* PARTY AUTOCOMPLETE */}
+      {/* CREATE */}
+      <form className="wr-card wr-form" onSubmit={submit}>
         <div className="autocomplete">
           <input
-            placeholder="Select Party"
+            placeholder="Select party"
             value={partyQuery}
             onChange={e => {
               setPartyQuery(e.target.value);
@@ -102,13 +95,12 @@ export default function WorkRates() {
           )}
         </div>
 
-        {/* SERVICE */}
         <select
           value={form.service_type}
           onChange={e => setForm({ ...form, service_type: e.target.value })}
           required
         >
-          <option value="">Select Service</option>
+          <option value="">Select service</option>
           {services.map(s => (
             <option key={s.id} value={s.id}>
               {s.type_of_work}
@@ -116,7 +108,6 @@ export default function WorkRates() {
           ))}
         </select>
 
-        {/* RATE */}
         <input
           placeholder="Rate"
           type="number"
@@ -129,7 +120,7 @@ export default function WorkRates() {
         <button type="submit">Create Rate</button>
       </form>
 
-      {/* ---------- SEARCH ---------- */}
+      {/* SEARCH */}
       <input
         className="wr-search"
         placeholder="Search by name or logo"
@@ -137,8 +128,8 @@ export default function WorkRates() {
         onChange={e => setSearch(e.target.value)}
       />
 
-      {/* ---------- LIST ---------- */}
-      <div className="wr-table">
+      {/* LIST */}
+      <div className="wr-list">
         {filteredRates.map(r => (
           <div key={r.id} className="wr-row">
             <div>
@@ -148,9 +139,7 @@ export default function WorkRates() {
               </div>
             </div>
 
-            <div className="rate">
-              ₹ {r.rate}
-            </div>
+            <div className="rate">₹ {r.rate}</div>
 
             <Link to={`/work-rates/${r.id}`} className="view">
               View
@@ -159,9 +148,11 @@ export default function WorkRates() {
         ))}
       </div>
 
-      <button className="back-btn" onClick={() => navigate("/dashboard")}>
-        ← Back to Dashboard
-      </button>
+      <div className="bottom-actions">
+        <button onClick={() => navigate("/dashboard")}>
+          ← Back to Dashboard
+        </button>
+      </div>
     </div>
   );
 }

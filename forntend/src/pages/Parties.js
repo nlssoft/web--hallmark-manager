@@ -32,46 +32,29 @@ export default function Parties() {
     setParties(res.data);
   };
 
-  // ---------- VALIDATION ----------
   const validate = () => {
     const e = {};
 
-    if (!form.logo.trim()) {
-      e.logo = "Logo is required";
-    } else if (form.logo.length > MAX_LOGO) {
-      e.logo = "Logo max length is 10";
-    }
+    if (!form.logo.trim()) e.logo = "Logo is required";
+    else if (form.logo.length > MAX_LOGO) e.logo = "Logo max length is 10";
 
-    if (!form.first_name.trim()) {
-      e.first_name = "First name is required";
-    } else if (form.first_name.length > MAX_TEXT) {
-      e.first_name = "First name too long";
-    }
+    if (!form.first_name.trim()) e.first_name = "First name is required";
+    else if (form.first_name.length > MAX_TEXT) e.first_name = "Too long";
 
-    if (form.last_name.length > MAX_TEXT) {
-      e.last_name = "Last name too long";
-    }
-
-    if (form.number.length > MAX_TEXT) {
-      e.number = "Phone too long";
-    }
-
-    if (form.email.length > MAX_TEXT) {
-      e.email = "Email too long";
-    }
+    if (form.last_name.length > MAX_TEXT) e.last_name = "Too long";
+    if (form.number.length > MAX_TEXT) e.number = "Too long";
+    if (form.email.length > MAX_TEXT) e.email = "Too long";
 
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  // ---------- SUBMIT ----------
   const submit = async (e) => {
     e.preventDefault();
     setServerError("");
 
     if (!validate()) return;
 
-    // 🔑 CONVERT EMPTY STRINGS TO NULL
     const payload = {
       ...form,
       last_name: form.last_name || null,
@@ -82,7 +65,6 @@ export default function Parties() {
 
     try {
       await api.post("/history/party/", payload);
-
       setForm({
         first_name: "",
         last_name: "",
@@ -91,11 +73,10 @@ export default function Parties() {
         address: "",
         email: "",
       });
-
       setErrors({});
       loadParties();
-    } catch (err) {
-      setServerError("Failed to create party. Check unique fields (email).");
+    } catch {
+      setServerError("Failed to create party");
     }
   };
 
@@ -109,33 +90,27 @@ export default function Parties() {
     <div className="parties-page">
       <div className="parties-header">
         <h1>Parties</h1>
-        <button className="back-btn" onClick={() => navigate("/dashboard")}>
-          ← Back to Dashboard
-        </button>
       </div>
 
       {/* CREATE PARTY */}
       <div className="card">
         <h3>Create Party</h3>
 
-        {serverError && (
-          <div className="form-error">{serverError}</div>
-        )}
+        {serverError && <div className="form-error">{serverError}</div>}
 
         <form className="party-form" onSubmit={submit}>
           <input
             placeholder="Logo *"
             maxLength={MAX_LOGO}
             value={form.logo}
-            onChange={e => setForm({ ...form, logo: e.target.value })}
+            onChange={(e) => setForm({ ...form, logo: e.target.value })}
           />
           {errors.logo && <div className="form-error">{errors.logo}</div>}
 
           <input
             placeholder="First name *"
-            maxLength={MAX_TEXT}
             value={form.first_name}
-            onChange={e => setForm({ ...form, first_name: e.target.value })}
+            onChange={(e) => setForm({ ...form, first_name: e.target.value })}
           />
           {errors.first_name && (
             <div className="form-error">{errors.first_name}</div>
@@ -143,29 +118,26 @@ export default function Parties() {
 
           <input
             placeholder="Last name"
-            maxLength={MAX_TEXT}
             value={form.last_name}
-            onChange={e => setForm({ ...form, last_name: e.target.value })}
+            onChange={(e) => setForm({ ...form, last_name: e.target.value })}
           />
 
           <input
             placeholder="Phone"
-            maxLength={MAX_TEXT}
             value={form.number}
-            onChange={e => setForm({ ...form, number: e.target.value })}
+            onChange={(e) => setForm({ ...form, number: e.target.value })}
           />
 
           <input
             placeholder="Email"
-            maxLength={MAX_TEXT}
             value={form.email}
-            onChange={e => setForm({ ...form, email: e.target.value })}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
 
           <input
             placeholder="Address"
             value={form.address}
-            onChange={e => setForm({ ...form, address: e.target.value })}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
           />
 
           <button type="submit">Create Party</button>
@@ -177,7 +149,7 @@ export default function Parties() {
         <input
           placeholder="Search by name or logo"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
@@ -195,7 +167,7 @@ export default function Parties() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(p => (
+            {filtered.map((p) => (
               <tr key={p.id}>
                 <td>{p.logo}</td>
                 <td>{p.first_name} {p.last_name}</td>
@@ -211,6 +183,7 @@ export default function Parties() {
         </table>
       </div>
 
+      {/* FOOTER BACK */}
       <div className="page-footer">
         <button className="back-btn" onClick={() => navigate("/dashboard")}>
           ← Back to Dashboard

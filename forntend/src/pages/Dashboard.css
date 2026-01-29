@@ -2,33 +2,106 @@
 .dashboard-page {
     min-height: 100vh;
     padding: 56px clamp(20px, 6vw, 80px);
-    background: radial-gradient(circle at top,
-            #0f172a,
-            #020617 70%);
-    color: #f9fafb;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #0f172a;
+}
+
+/* ---------- HEADER ROW ---------- */
+.dashboard-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 56px;
 }
 
 /* ---------- HEADER ---------- */
-.dashboard-header {
-    margin-bottom: 48px;
-}
-
 .dashboard-header h1 {
-    font-size: clamp(2.2rem, 4vw, 3rem);
-    font-weight: 700;
-    margin-bottom: 6px;
+    font-size: clamp(2.3rem, 4vw, 3.1rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    color: #020617;
 }
 
 .dashboard-header p {
-    color: #9ca3af;
-    font-size: 1rem;
+    color: #475569;
+    font-size: 1.05rem;
+}
+
+/* ---------- PROFILE ---------- */
+.profile-wrapper {
+    position: relative;
+}
+
+.profile-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.profile-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: white;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+}
+
+.profile-arrow {
+    font-size: 0.9rem;
+    color: #475569;
+}
+
+/* ---------- PROFILE MENU ---------- */
+.profile-menu {
+    position: absolute;
+    right: 0;
+    top: 52px;
+    width: 180px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow:
+        0 8px 20px rgba(15, 23, 42, 0.12),
+        0 20px 40px rgba(15, 23, 42, 0.1);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+}
+
+.profile-menu a,
+.profile-menu button {
+    padding: 10px 12px;
+    border-radius: 10px;
+    text-align: left;
+    font-size: 0.95rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #0f172a;
+    text-decoration: none;
+}
+
+.profile-menu a:hover,
+.profile-menu button:hover {
+    background: #f1f5f9;
+}
+
+.logout-btn {
+    color: #dc2626;
+    font-weight: 500;
 }
 
 /* ---------- GRID ---------- */
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 28px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 30px;
 }
 
 /* ---------- CARD BASE ---------- */
@@ -37,41 +110,33 @@
     padding: 34px 32px;
     border-radius: 20px;
     text-decoration: none;
-
-    background: linear-gradient(145deg,
-            rgba(255, 255, 255, 0.08),
-            rgba(255, 255, 255, 0.02));
-
-    backdrop-filter: blur(14px);
+    background: #ffffff;
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.08),
-        0 20px 50px rgba(0, 0, 0, 0.7);
-
-    transition:
-        transform 0.25s ease,
-        box-shadow 0.25s ease;
+        0 4px 12px rgba(15, 23, 42, 0.06),
+        0 12px 30px rgba(15, 23, 42, 0.08);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 /* ---------- HOVER ---------- */
 .dashboard-card:hover {
-    transform: translateY(-10px) scale(1.02);
+    transform: translateY(-6px);
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.12),
-        0 30px 70px rgba(0, 0, 0, 0.85);
+        0 10px 24px rgba(15, 23, 42, 0.12),
+        0 22px 45px rgba(15, 23, 42, 0.16);
 }
 
 /* ---------- CARD TEXT ---------- */
 .dashboard-card h3 {
-    font-size: 1.4rem;
+    font-size: 1.45rem;
     font-weight: 600;
-    margin-bottom: 10px;
-    color: #ffffff;
+    margin-bottom: 12px;
+    color: #020617;
 }
 
 .dashboard-card p {
     font-size: 0.95rem;
-    color: #cbd5f5;
-    line-height: 1.4;
+    color: #475569;
+    line-height: 1.45;
 }
 
 /* ---------- COLOR ACCENTS ---------- */
@@ -80,7 +145,6 @@
     position: absolute;
     inset: 0;
     border-radius: 20px;
-    opacity: 0.9;
     pointer-events: none;
 }
 
@@ -100,17 +164,27 @@
     box-shadow: inset 0 0 0 2px #a855f7;
 }
 
-.card-red::before {
-    box-shadow: inset 0 0 0 2px #ef4444;
-}
-
 .card-teal::before {
     box-shadow: inset 0 0 0 2px #14b8a6;
 }
 
+.card-red::before {
+    box-shadow: inset 0 0 0 2px #ef4444;
+}
+
+.card-slate::before {
+    box-shadow: inset 0 0 0 2px #64748b;
+}
+
 /* ---------- MOBILE ---------- */
 @media (max-width: 600px) {
+    .dashboard-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+
     .dashboard-card {
-        padding: 26px 24px;
+        padding: 28px 26px;
     }
 }

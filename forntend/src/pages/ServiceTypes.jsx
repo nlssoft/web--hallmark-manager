@@ -6,20 +6,35 @@ import "./ServiceTypes.css";
 export default function ServiceTypes() {
     const navigate = useNavigate();
 
-    const [services, setServices] = useState([]);
+    const [services, setServices] = useState([]); // ALWAYS array
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
     useEffect(() => {
-        api.get("/history/service-type/")
-            .then(res => {
-                setServices(res.data);
-                setLoading(false);
-            })
-            .catch(() => {
-                setError("Failed to load service types");
-                setLoading(false);
-            });
+        let mounted = true;
+
+        const loadServices = async () => {
+            try {
+                const res = await api.get("/history/service-type/");
+                if (mounted) {
+                    setServices(Array.isArray(res.data) ? res.data : []);
+                    setError("");
+                }
+            } catch {
+                if (mounted) {
+                    setError("Failed to load service types");
+                    setServices([]);
+                }
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+
+        loadServices();
+
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     return (
@@ -34,21 +49,22 @@ export default function ServiceTypes() {
 
             {!loading && !error && (
                 <div className="service-grid">
-                    {services.map(service => (
+                    {services.length === 0 && (
+                        <div className="empty">No service types found</div>
+                    )}
+
+                    {services.map((service) => (
                         <div key={service.id} className="service-card">
-                            <h3>{service.type_of_work}</h3>
+                            <div className="service-name">
+                                {service.type_of_work}
+                            </div>
+
                             <div className="used-count">
-                                <span>{service.used}</span>
+                                <span>{service.used ?? 0}</span>
                                 <small>used this month</small>
                             </div>
                         </div>
                     ))}
-
-                    {services.length === 0 && (
-                        <div className="empty">
-                            No service types found
-                        </div>
-                    )}
                 </div>
             )}
 

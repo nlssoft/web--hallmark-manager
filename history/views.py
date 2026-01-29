@@ -39,8 +39,8 @@ class PartyViewSet(ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         party = self.get_object()
         if (
-            Record.objects.filter(party=party).exists() 
-            or 
+            Record.objects.filter(party=party).exists()
+            or
             Payment.objects.filter(party=party).exists()
         ):
             return Response({'error': 'party can not be deleted because its accoiated with records'},
@@ -303,8 +303,6 @@ class RecordViewSet(ModelViewSet):
         return Response(self.get_serializer(record).data, status=status.HTTP_200_OK)
 
 
-
-
 class PaymentViewSet(ModelViewSet):
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated, IsOwner, PaymentSaftyNet]
@@ -312,7 +310,8 @@ class PaymentViewSet(ModelViewSet):
     filterset_class = PaymentFilter
 
     def get_queryset(self):
-        return Payment.objects.filter(party__user=self.request.user)
+        return Payment.objects.filter(party__user=self.request.user)\
+            .select_related('party').order_by('-payment_date', '-pk')
 
     def get_serializer_class(self):
 
@@ -551,4 +550,5 @@ class AuditLogViewSet(ReadOnlyModelViewSet):
     filterset_class = AuditLogFilter
 
     def get_queryset(self):
-        return AuditLog.objects.filter(user=self.request.user)
+        return AuditLog.objects.filter(user=self.request.user)\
+            .select_related('party').order_by('-created_at', '-pk')

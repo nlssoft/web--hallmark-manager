@@ -39,99 +39,125 @@ export default function RecordDetail() {
 
   return (
     <div className="records-page">
-      <h1>Record Detail</h1>
+      <header className="records-header">
+        <h1>Record Detail</h1>
+        <p>View and update record information</p>
+      </header>
 
-      <div className="record-detail">
-        <div className="detail-row">
-          <span className="label">Party</span>
-          <span>{record.party__logo}</span>
+      <div className="card record-detail-card">
+        <div className="record-detail-grid">
+          <Detail label="Party">
+            {record.party__logo}
+          </Detail>
+
+          <Detail label="Service">
+            {record.service_type__type_of_work}
+          </Detail>
+
+          <Detail label="Pieces">
+            {editing ? (
+              <input
+                type="number"
+                min="1"
+                value={form.pcs}
+                onChange={(e) =>
+                  setForm({ ...form, pcs: e.target.value })
+                }
+              />
+            ) : (
+              record.pcs
+            )}
+          </Detail>
+
+          <Detail label="Rate">
+            {editing ? (
+              <input
+                type="number"
+                min="0"
+                value={form.rate}
+                onChange={(e) =>
+                  setForm({ ...form, rate: e.target.value })
+                }
+              />
+            ) : (
+              `₹ ${record.rate}`
+            )}
+          </Detail>
+
+          <Detail label="Discount">
+            {editing ? (
+              <input
+                type="number"
+                min="0"
+                value={form.discount}
+                onChange={(e) =>
+                  setForm({ ...form, discount: e.target.value })
+                }
+              />
+            ) : (
+              `₹ ${record.discount}`
+            )}
+          </Detail>
+
+          <Detail label="Total Amount">
+            ₹ {record.amount}
+          </Detail>
+
+          <Detail label="Paid Amount">
+            ₹ {record.paid_amount}
+          </Detail>
+
+          <Detail label="Record Date">
+            {record.record_date}
+          </Detail>
         </div>
 
-        <div className="detail-row">
-          <span className="label">Service</span>
-          <span>{record.service_type__type_of_work}</span>
-        </div>
-
-        <div className="detail-row">
-          <span className="label">PCS</span>
+        <div className="detail-actions">
           {editing ? (
-            <input
-              type="number"
-              min="1"
-              value={form.pcs}
-              onChange={(e) =>
-                setForm({ ...form, pcs: e.target.value })
-              }
-            />
+            <>
+              <button className="primary" onClick={save}>
+                Save Changes
+              </button>
+              <button
+                className="secondary"
+                onClick={() => {
+                  setForm(record);
+                  setEditing(false);
+                }}
+              >
+                Cancel
+              </button>
+            </>
           ) : (
-            <span>{record.pcs}</span>
+            <>
+              <button
+                className="primary"
+                onClick={() => setEditing(true)}
+              >
+                Edit Record
+              </button>
+              <button className="danger" onClick={del}>
+                Delete
+              </button>
+            </>
           )}
-        </div>
-
-        <div className="detail-row">
-          <span className="label">Rate</span>
-          {editing ? (
-            <input
-              type="number"
-              min="0"
-              value={form.rate}
-              onChange={(e) =>
-                setForm({ ...form, rate: e.target.value })
-              }
-            />
-          ) : (
-            <span>₹ {record.rate}</span>
-          )}
-        </div>
-
-        <div className="detail-row">
-          <span className="label">Discount</span>
-          {editing ? (
-            <input
-              type="number"
-              min="0"
-              value={form.discount}
-              onChange={(e) =>
-                setForm({ ...form, discount: e.target.value })
-              }
-            />
-          ) : (
-            <span>₹ {record.discount}</span>
-          )}
-        </div>
-
-        <div className="detail-row">
-          <span className="label">Amount</span>
-          <span>₹ {record.amount}</span>
-        </div>
-
-        <div className="detail-row">
-          <span className="label">Paid</span>
-          <span>₹ {record.paid_amount}</span>
-        </div>
-
-        <div className="detail-row">
-          <span className="label">Date</span>
-          <span>{record.record_date}</span>
-        </div>
-
-        <div style={{ marginTop: 16 }}>
-          {editing ? (
-            <button onClick={save}>Save Changes</button>
-          ) : (
-            <button onClick={() => setEditing(true)}>
-              Edit Record
-            </button>
-          )}
-          <button className="danger" onClick={del} style={{ marginLeft: 8 }}>
-            Delete
-          </button>
         </div>
       </div>
 
-      <button className="back" onClick={() => navigate("/records")}>
-        ← Back to Records
-      </button>
+      <div className="bottom-actions">
+        <button onClick={() => navigate("/records")}>
+          ← Back to Records
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Detail({ label, children }) {
+  return (
+    <div className="detail-item">
+      <div className="detail-label">{label}</div>
+      <div className="detail-value">{children}</div>
     </div>
   );
 }

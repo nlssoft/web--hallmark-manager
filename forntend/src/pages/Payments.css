@@ -1,0 +1,262 @@
+/* ================= PAGE ================= */
+
+.payments-page {
+    min-height: 100vh;
+    padding: 48px 24px 80px;
+    background: #f8fafc;
+    color: #0f172a;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* ================= HEADER ================= */
+
+.payments-header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.payments-header p {
+    color: #64748b;
+    margin-bottom: 32px;
+}
+
+/* ================= CARD ================= */
+
+.payments-page .card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow:
+        0 6px 20px rgba(15, 23, 42, 0.08),
+        0 20px 40px rgba(15, 23, 42, 0.06);
+    margin-bottom: 32px;
+}
+
+/* ================= CREATE FORM ================= */
+
+.payments-page .payment-form {
+    display: grid;
+    gap: 14px;
+}
+
+.payments-page .payment-form input {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #c7d2fe;
+    font-size: 0.95rem;
+}
+
+.payments-page .payment-form button {
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.payments-page .payment-form button:hover {
+    background: #1d4ed8;
+}
+
+/* ================= AUTOCOMPLETE ================= */
+
+.payments-page .autocomplete {
+    position: relative;
+}
+
+.payments-page .autocomplete-list {
+    position: absolute;
+    top: 110%;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 20;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+.payments-page .autocomplete-item {
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.payments-page .autocomplete-item:hover {
+    background: #f1f5f9;
+}
+
+.payments-page .autocomplete-item span {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+/* ================= FILTER BAR ================= */
+
+.payments-page .filter-bar {
+    display: grid;
+    grid-template-columns: 180px 1fr 180px 180px auto;
+    gap: 14px;
+    margin-bottom: 28px;
+}
+
+.payments-page .filter-bar input,
+.payments-page .filter-bar select {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #c7d2fe;
+    background: #ffffff;
+}
+
+.payments-page .filter-bar button {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 26px;
+    cursor: pointer;
+}
+
+.payments-page .filter-bar button:hover {
+    background: #1d4ed8;
+}
+
+/* ================= PAYMENT ROW ================= */
+
+.payments-page .payment-row {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px 22px;
+    display: grid;
+    grid-template-columns: 140px 1fr auto;
+    gap: 24px;
+    align-items: center;
+    margin-bottom: 16px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.payments-page .payment-row .amount {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #2563eb;
+}
+
+.payments-page .payment-row .muted {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.payments-page .payment-row a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* ================= DETAIL PAGE ================= */
+
+.payments-page .payment-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.payments-page .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.payments-page .detail-label {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.payments-page .detail-value {
+    font-size: 16px;
+}
+
+.payments-page .detail-value input {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #c7d2fe;
+}
+
+/* ================= ERRORS ================= */
+
+.payments-page .error-box {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+/* ================= ACTIONS ================= */
+
+.payments-page .detail-actions {
+    margin-top: 28px;
+    display: flex;
+    gap: 12px;
+}
+
+.payments-page .detail-actions button {
+    padding: 12px 22px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+}
+
+.payments-page .detail-actions .primary {
+    background: #2563eb;
+    color: white;
+}
+
+.payments-page .detail-actions .secondary {
+    background: #e5e7eb;
+    color: #0f172a;
+}
+
+.payments-page .detail-actions .danger {
+    background: #dc2626;
+    color: white;
+}
+
+/* ================= BOTTOM ================= */
+
+.payments-page .bottom-actions {
+    margin-top: 48px;
+    text-align: center;
+}
+
+.payments-page .bottom-actions button {
+    background: #e5e7eb;
+    border: none;
+    color: #0f172a;
+    padding: 12px 24px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.payments-page .bottom-actions button:hover {
+    background: #d1d5db;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 900px) {
+    .payments-page .filter-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .payments-page .payment-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}

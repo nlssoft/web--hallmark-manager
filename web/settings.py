@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_filters',
-      'corsheaders',
+    'corsheaders',
     'djoser',
     'rest_framework',
     "debug_toolbar",
@@ -149,7 +149,6 @@ REST_FRAMEWORK = {
 }
 
 
-
 AUTH_USER_MODEL = 'core.User'
 
 
@@ -157,13 +156,13 @@ DJOSER = {
     'SERIALIZERS': {
         'user_create': 'core.serializer.UserCreateSerializer',
         'current_user': 'core.serializer.UserSerializer',
-
+        'user': 'core.serializers.UserSerializer',
     }
 }
 
 
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=40),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
-      }
+}

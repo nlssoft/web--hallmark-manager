@@ -1,121 +1,165 @@
-/* Page background */
+/* ================================
+   PAGE LAYOUT
+================================ */
 .party-detail-page {
     min-height: 100vh;
-    background: #f6f7f9;
+    background: #f8fafc;
+    /* soft white, not hospital white */
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 32px 16px;
+    padding: 48px 24px;
     box-sizing: border-box;
 }
 
-/* Main card */
+/* ================================
+   MAIN CARD
+================================ */
 .party-card {
     width: 100%;
-    max-width: 900px;
-    /* THIS makes it bigger */
+    max-width: 1100px;
     background: #ffffff;
-    border-radius: 12px;
-    padding: 32px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    border-radius: 24px;
+    padding: 48px;
+
+    box-shadow:
+        0 8px 24px rgba(15, 23, 42, 0.10),
+        0 32px 64px rgba(15, 23, 42, 0.08);
 }
 
-/* Grid layout for fields */
+/* ================================
+   GRID LAYOUT
+================================ */
 .party-grid {
     display: grid;
-    grid-template-columns: 1fr 2fr;
-    row-gap: 20px;
-    column-gap: 24px;
+    grid-template-columns: 1fr 2.2fr;
+    row-gap: 28px;
+    column-gap: 48px;
 }
 
-/* Labels */
+/* ================================
+   LABELS & VALUES
+================================ */
 .party-label {
-    font-size: 14px;
-    color: #6b7280;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #64748b;
 }
 
-/* Values */
 .party-value {
-    font-size: 16px;
-    color: #111827;
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: #0f172a;
     word-break: break-word;
 }
 
-/* Inputs when editing */
+/* ================================
+   INPUTS (EDIT MODE)
+================================ */
 .party-input {
     width: 100%;
-    padding: 10px 12px;
-    font-size: 16px;
+    padding: 12px 14px;
+    font-size: 1rem;
+    border-radius: 10px;
     border: 1px solid #d1d5db;
-    border-radius: 8px;
+    background: #ffffff;
 }
 
-/* Errors */
+.party-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* ================================
+   ERRORS
+================================ */
 .party-error {
     color: #dc2626;
-    font-size: 13px;
-    margin-top: 4px;
+    font-size: 0.8rem;
+    margin-top: 6px;
 }
 
-/* Action buttons */
+/* ================================
+   ACTION BUTTONS
+================================ */
 .party-actions {
-    margin-top: 32px;
+    margin-top: 48px;
     display: flex;
-    gap: 12px;
+    gap: 16px;
 }
 
 .party-actions button {
-    padding: 10px 18px;
-    font-size: 15px;
-    border-radius: 8px;
+    padding: 12px 22px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 10px;
     border: none;
     cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.party-actions button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
 }
 
 .party-edit {
     background: #2563eb;
-    color: white;
+    color: #ffffff;
 }
 
 .party-delete {
     background: #dc2626;
-    color: white;
+    color: #ffffff;
 }
 
 .party-cancel {
     background: #9ca3af;
-    color: white;
+    color: #ffffff;
 }
 
-/* Back button at bottom */
+/* ================================
+   BACK BUTTON
+================================ */
 .party-back {
-    margin-top: 40px;
+    margin-top: 48px;
 }
 
 .party-back button {
-    padding: 10px 18px;
-    font-size: 15px;
+    padding: 12px 22px;
+    font-size: 0.95rem;
+    font-weight: 500;
     border-radius: 999px;
     border: none;
     background: #e5e7eb;
+    color: #111827;
     cursor: pointer;
+    transition: background 0.15s ease;
 }
 
-/* -------- RESPONSIVE -------- */
-@media (max-width: 640px) {
+.party-back button:hover {
+    background: #d1d5db;
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+@media (max-width: 720px) {
     .party-card {
-        padding: 20px;
+        padding: 28px;
     }
 
     .party-grid {
         grid-template-columns: 1fr;
+        row-gap: 20px;
     }
 
     .party-label {
-        font-size: 13px;
+        font-size: 0.85rem;
     }
 
     .party-value {
-        font-size: 15px;
+        font-size: 1rem;
     }
 }

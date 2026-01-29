@@ -28,5 +28,5 @@ urlpatterns = [
     path('history/', include('history.urls')),
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.jwt')),
-
+    path('user/', include('core.urls')),
 ]

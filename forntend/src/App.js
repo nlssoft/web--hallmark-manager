@@ -9,6 +9,11 @@ import WorkRates from "./pages/WorkRates";
 import WorkRateDetail from "./pages/WorkRateDetail";
 import Records from "./pages/Records";
 import RecordDetail from "./pages/RecordDetail";
+import Payments from "./pages/Payments";
+import PaymentDetail from "./pages/PaymentDetail";
+import Profile from "./pages/Profile";
+import Summary from "./pages/Summary";
+import AuditLog from "./pages/AuditLog";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -91,8 +96,53 @@ function App() {
         }
       />
 
+      <Route
+        path="/payments"
+        element={
+          <ProtectedRoute>
+            <Payments />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/payments/:id"
+        element={
+          <ProtectedRoute>
+            <PaymentDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/summary"
+        element={
+          <ProtectedRoute>
+            <Summary />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/audit-log"
+        element={
+          <ProtectedRoute>
+            <AuditLog />
+          </ProtectedRoute>
+        }
+      />
+
       {/* -------- FALLBACK -------- */}
-      <Route path="*" element={<Navigate to="/dashboard" />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
