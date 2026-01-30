@@ -152,3 +152,32 @@
     gap: 12px;
   }
 }
+
+
+
+
+.party-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.party-name {
+  font-size: 0.9rem;
+  color: #020617;
+}
+
+.party-address {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.rate-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rate-amount {
+  font-weight: 600;
+}
