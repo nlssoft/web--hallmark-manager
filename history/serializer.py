@@ -64,10 +64,16 @@ class Work_RateSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    party__address = serializers.CharField(
+        source='party.address',
+        read_only=True
+    )
+
+
     class Meta:
         model = Work_Rate
         fields = ['id', 'party__first_name', 'party__last_name',
-                  'party__logo', 'rate', 'party', 'service_type']
+                  'party__logo', 'party__address' , 'rate', 'party', 'service_type']
 
 
 class RecordUpdateSerializer(serializers.ModelSerializer):
@@ -218,10 +224,16 @@ class PaymentSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    party__address = serializers.CharField(
+        source='party.address',
+        read_only=True
+    )
+
+
     class Meta:
         model = Payment
         fields = ['id', 'party', 'party__logo', 'party__first_name',
-                  'party__last_name', 'amount', 'payment_date']
+                  'party__last_name', 'party__address', 'amount', 'payment_date']
 
     def validate_payment_date(self, value):
         delta = localdate() - value
