@@ -11,24 +11,18 @@ export default function Records() {
   const [services, setServices] = useState([]);
   const [error, setError] = useState("");
 
+  // Autocomplete state (IMPORTANT)
+  const [partyQuery, setPartyQuery] = useState("");
+  const [showPartyList, setShowPartyList] = useState(false);
+
   const [form, setForm] = useState({
-    party: "",
+    party: "",            // MUST be ID only
     service_type: "",
     pcs: "",
     rate_mode: "system",
     rate: "",
     discount: "",
     record_date: "",
-  });
-
-  const [filters, setFilters] = useState({
-    search_by: "party__logo",
-    search_text: "",
-    date_from: "",
-    date_to: "",
-    min_discount: "",
-    paid_min: "",
-    paid_max: "",
   });
 
   useEffect(() => {
@@ -49,27 +43,10 @@ export default function Records() {
     }
   };
 
-  const buildQuery = () => {
-    const q = new URLSearchParams();
-
-    if (filters.search_text) {
-      q.append(filters.search_by, filters.search_text);
-    }
-    if (filters.date_from) q.append("date_range_after", filters.date_from);
-    if (filters.date_to) q.append("date_range_before", filters.date_to);
-    if (filters.min_discount) q.append("discount", filters.min_discount);
-    if (filters.paid_min) q.append("paid_amount_min", filters.paid_min);
-    if (filters.paid_max) q.append("paid_amount_max", filters.paid_max);
-
-    const qs = q.toString();
-    return qs ? `?${qs}` : "";
-  };
-
   const loadRecords = async () => {
     try {
-      const res = await api.get(`/history/record/${buildQuery()}`);
+      const res = await api.get("/history/record/");
       setRecords(res.data || []);
-      setError("");
     } catch {
       setError("Failed to load records");
     }
@@ -77,12 +54,13 @@ export default function Records() {
 
   const submit = async (e) => {
     e.preventDefault();
+    setError("");
 
     const payload = {
       party: form.party,
       service_type: form.service_type,
       pcs: Number(form.pcs),
-      discount: form.discount || 0,
+      discount: Number(form.discount || 0),
       rate_mode: form.rate_mode,
       record_date: form.record_date || undefined,
     };
@@ -93,6 +71,8 @@ export default function Records() {
 
     try {
       await api.post("/history/record/", payload);
+
+      // reset form
       setForm({
         party: "",
         service_type: "",
@@ -102,11 +82,24 @@ export default function Records() {
         discount: "",
         record_date: "",
       });
+      setPartyQuery("");
       loadRecords();
-    } catch {
-      setError("Failed to create record");
+    } catch (err) {
+      // REAL backend error shown
+      if (err.response?.data) {
+        const firstError = Object.values(err.response.data)[0];
+        setError(Array.isArray(firstError) ? firstError[0] : firstError);
+      } else {
+        setError("Failed to create record");
+      }
     }
   };
+
+  const filteredParties = parties.filter((p) =>
+    `${p.logo} ${p.first_name} ${p.last_name} ${p.address}`
+      .toLowerCase()
+      .includes(partyQuery.toLowerCase())
+  );
 
   return (
     <div className="records-page">
@@ -117,27 +110,46 @@ export default function Records() {
 
       {error && <div className="form-error">{error}</div>}
 
-      {/* CREATE */}
+      {/* ===== CREATE RECORD ===== */}
       <form className="card record-form" onSubmit={submit}>
-        <input
-          list="party-autocomplete"
-          placeholder="Search party (name / logo / address)"
-          required
-          value={form.party}
-          onChange={(e) => setForm({ ...form, party: e.target.value })}
-        />
+        {/* PARTY AUTOCOMPLETE */}
+        <div className="autocomplete">
+          <input
+            placeholder="Search party (name / logo / address)"
+            value={partyQuery}
+            onChange={(e) => {
+              setPartyQuery(e.target.value);
+              setShowPartyList(true);
+            }}
+            required
+          />
 
-        <datalist id="party-autocomplete">
-          {parties.map((p) => (
-            <option
-              key={p.id}
-              value={p.id}
-            >
-              {p.logo} — {p.first_name} {p.last_name} ({p.address})
-            </option>
-          ))}
-        </datalist>
+          {showPartyList && partyQuery && (
+            <div className="autocomplete-list">
+              {filteredParties.map((p) => (
+                <div
+                  key={p.id}
+                  className="autocomplete-item"
+                  onClick={() => {
+                    setForm({ ...form, party: p.id });
+                    setPartyQuery(
+                      `${p.logo} — ${p.first_name} ${p.last_name}`
+                    );
+                    setShowPartyList(false);
+                  }}
+                >
+                  <strong>{p.logo}</strong>
+                  <span>
+                    {p.first_name} {p.last_name}
+                  </span>
+                  <small>{p.address}</small>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
+        {/* SERVICE */}
         <select
           required
           value={form.service_type}
@@ -162,20 +174,39 @@ export default function Records() {
           onChange={(e) => setForm({ ...form, pcs: e.target.value })}
         />
 
+        {/* RATE MODE */}
         <select
           value={form.rate_mode}
-          onChange={(e) => setForm({ ...form, rate_mode: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, rate_mode: e.target.value })
+          }
         >
           <option value="system">Use system rate</option>
           <option value="manual">Enter rate manually</option>
         </select>
+
+        {/* MANUAL RATE (FIXED) */}
+        {form.rate_mode === "manual" && (
+          <input
+            type="number"
+            min="0"
+            placeholder="Manual rate"
+            required
+            value={form.rate}
+            onChange={(e) =>
+              setForm({ ...form, rate: e.target.value })
+            }
+          />
+        )}
 
         <input
           type="number"
           min="0"
           placeholder="Discount amount"
           value={form.discount}
-          onChange={(e) => setForm({ ...form, discount: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, discount: e.target.value })
+          }
         />
 
         <input
@@ -189,18 +220,16 @@ export default function Records() {
         <button type="submit">Create Record</button>
       </form>
 
-      {/* LIST */}
+      {/* ===== RECORD LIST ===== */}
       {records.map((r) => (
         <div key={r.id} className="record-card">
           <div className="record-head">
-            <div className="party-block">
+            <div>
               <strong>{r.party__logo}</strong>
-              <span>
+              <div>
                 {r.party__first_name} {r.party__last_name}
-              </span>
-              <div className="party-address">
-                {r.party__address}
               </div>
+              <div className="muted">{r.party__address}</div>
             </div>
 
             <span className="muted">

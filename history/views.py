@@ -20,6 +20,7 @@ from .models import *
 from .serializer import *
 from .permissions import *
 from .filters import *
+from .pagination import *
 
 # starting writing code from this point !!!
 
@@ -29,6 +30,7 @@ class PartyViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwner]
     filter_backends = [DjangoFilterBackend]
     filterset_class = PartyFilter
+    pagination_class = NormalPagination
 
     def get_queryset(self):
         return Party.objects.filter(user=self.request.user)
@@ -54,6 +56,7 @@ class Work_RateViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwner]
     filter_backends = [DjangoFilterBackend]
     filterset_class = WorkRateFilter
+    pagination_class = NormalPagination
 
     def get_queryset(self):
         return Work_Rate.objects.filter(party__user=self.request.user)\
@@ -83,6 +86,7 @@ class RecordViewSet(ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     permission_classes = [IsAuthenticated, IsOwner]
     filterset_class = RecordFilter
+    pagination_class = NormalPagination
 
     def get_serializer_class(self, *args, **kwargs):
         if self.action in ['list', 'retrieve']:
@@ -100,7 +104,7 @@ class RecordViewSet(ModelViewSet):
         ).select_related(
             'party',
             'service_type'
-        ).order_by('-record_date', '-pk')
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -308,10 +312,11 @@ class PaymentViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwner, PaymentSaftyNet]
     filter_backends = [DjangoFilterBackend]
     filterset_class = PaymentFilter
+    pagination_class = NormalPagination
 
     def get_queryset(self):
         return Payment.objects.filter(party__user=self.request.user)\
-            .select_related('party').order_by('-payment_date', '-pk')
+            .select_related('party')
 
     def get_serializer_class(self):
 
@@ -528,6 +533,7 @@ class AllocationViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = AllocationFilter
+    pagination_class = NormalPagination
 
     def get_queryset(self):
         return Allocation.objects.filter(payment__party__user=self.request.user)
@@ -538,6 +544,7 @@ class AdvanceLedgerViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = AdvanceLedgerFilter
+    pagination_class = NormalPagination
 
     def get_queryset(self):
         return AdvanceLedger.objects.filter(party__user=self.request.user)
@@ -548,6 +555,7 @@ class AuditLogViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = AuditLogFilter
+    pagination_class = NormalPagination
 
     def get_queryset(self):
         return AuditLog.objects.filter(user=self.request.user)\

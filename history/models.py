@@ -9,14 +9,14 @@ from decimal import Decimal
 
 class Party(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE, related_name='user')
+                             on_delete=models.CASCADE)
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255, blank=True, null=True)
     number = models.CharField(max_length=255, null=True,  blank=True)
     email = models.EmailField(
-        max_length=255, blank=True, null=True, unique=True)
+        max_length=255, blank=True, null=True)
     address = models.TextField(null=True, blank=True)
-    logo = models.CharField(max_length=10)
+    logo = models.CharField(max_length=10, null=True, blank=True)
 
     @property
     def owner(self):
@@ -24,9 +24,6 @@ class Party(models.Model):
 
     def __str__(self) -> str:
         return f'{self.first_name} {self.last_name}'
-
-    class Meta:
-        ordering = ['first_name', 'last_name']
 
     @property
     def due(self):
@@ -56,6 +53,9 @@ class Party(models.Model):
 
         return result['total'] or Decimal('0.00')
 
+    class Meta:
+        ordering = ['first_name', 'last_name']
+
 
 class Service_Type(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
@@ -66,6 +66,7 @@ class Service_Type(models.Model):
         return self.type_of_work
 
     class Meta:
+        ordering = ['type_of_work']
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'type_of_work'], name='unique_user_type_of_work')
@@ -82,6 +83,7 @@ class Work_Rate(models.Model):
         return self.party.user
 
     class Meta:
+        ordering = ['rate']
         constraints = [
             models.UniqueConstraint(fields=['party', 'service_type'],
                                     name='unique_party_service_type_rate')]
@@ -117,6 +119,7 @@ class Record(models.Model):
         return (self.rate * self.pcs) - self.discount
 
     class Meta:
+        ordering = ['-record_date', '-pk']
         permissions = [
             ('cancel_record', 'can cancel record')
         ]
@@ -133,6 +136,9 @@ class Payment(models.Model):
     @property
     def owner(self):
         return self.party.user
+
+    class Meta:
+        ordering = ['-payment_date', '-pk']
 
 
 class Allocation(models.Model):
@@ -180,6 +186,9 @@ class AdvanceLedger(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['-pk']
+
 
 class AuditLog(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
@@ -199,3 +208,6 @@ class AuditLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     party = models.ForeignKey(
         Party, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        ordering = ['-pk']
