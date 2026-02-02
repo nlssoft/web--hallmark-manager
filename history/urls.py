@@ -5,7 +5,7 @@ from . import views
 
 router = routers.DefaultRouter()
 router.register('party', views.PartyViewSet, basename='party')
-router.register('work-rate', views.Work_RateViewSet, basename='work')
+router.register('work-rate', views.Work_RateViewSet, basename='work-rate')
 router.register('service-type', views.Service_TypeViewSet,
                 basename='service-type')
 router.register('record', views.RecordViewSet, basename='record')

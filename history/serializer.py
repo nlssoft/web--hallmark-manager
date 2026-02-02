@@ -103,6 +103,20 @@ class RecordUpdateSerializer(serializers.ModelSerializer):
         model = Record
         fields = ['rate', 'pcs', 'discount', 'reason']
 
+    
+    def validate(self, attrs):
+        rate = attrs.get("rate")
+        pcs = attrs.get("pcs")
+        discount = attrs.get("discount")
+
+        if discount is not None and rate is not None and pcs is not None:
+            max_discount = rate * pcs
+            if discount > max_discount:
+                raise serializers.ValidationError({
+                    "discount": f"Discount cannot exceed {max_discount}"
+                })
+
+        return attrs
 
 class RecordSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(
@@ -166,7 +180,7 @@ class RecordCreateSerializer(serializers.ModelSerializer):
         max_digits=10,
         decimal_places=2,
         min_value=0,
-        required=False
+        required=False,
     )
 
     class Meta:
@@ -202,6 +216,19 @@ class RecordCreateSerializer(serializers.ModelSerializer):
 
         return super().create(validated_data)
 
+    def validate(self, attrs):
+        rate = attrs.get("rate")
+        pcs = attrs.get("pcs")
+        discount = attrs.get("discount")
+
+        if discount is not None and rate is not None and pcs is not None:
+            max_discount = rate * pcs
+            if discount > max_discount:
+                raise serializers.ValidationError({
+                    "discount": f"Discount cannot exceed {max_discount}"
+                })
+
+        return attrs
 
 class PaymentSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(
