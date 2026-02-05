@@ -163,18 +163,34 @@ class TestUpdateRecord:
         service = baker.make(Service_Type, user=user_b)
         record = baker.make(Record, party=party, service_type=service,
                             paid_amount=0.00, discount=0.00, rate=25, pcs=10)
+        record_id = record.id
+        pay = baker.make(Payment, amount = 250)
+        Allocation.objects.create(
+            payment = pay,
+            record = record,
+            amount = 250
+        )
+        record2= baker.make(Record, party=party, service_type=service,
+                            paid_amount=0.00, discount=0.00, rate=25, pcs=10)
 
         api_client.force_authenticate(user=user_b)
         response = api_client.patch(
             reverse('record-detail', args=[record.id]), {
-                "rate": 59,
-                "discount": 45,
-                "pcs": 2,
+                "discount": 100,
                 "reason": 'testing update'
             }
         )
+        advance = AdvanceLedger.objects.get(record = record, direction = "IN")
+
+        log = AuditLog.objects.first
 
         assert response.status_code == status.HTTP_200_OK
+        assert record.paid_amount <= Decimal("250")
+        assert  advance.amount == Decimal("150")
+        assert log.action == "UPDATE"
+        assert log.model_name == 'Record'
+        assert log.object_id == record_id
+
 
     def test_user_a_cannot_update_user_b_records(self, api_client):
         """User A cannot update User B's record"""
