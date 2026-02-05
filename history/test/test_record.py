@@ -4,6 +4,7 @@ from history.models import *
 from model_bakery import baker
 from rest_framework import status
 from django.urls import reverse
+from history.service import PaymentService
 
 
 @pytest.mark.django_db
@@ -164,14 +165,12 @@ class TestUpdateRecord:
         record = baker.make(Record, party=party, service_type=service,
                             paid_amount=0.00, discount=0.00, rate=25, pcs=10)
         record_id = record.id
-        pay = baker.make(Payment, amount = 250)
-        Allocation.objects.create(
-            payment = pay,
-            record = record,
-            amount = 250
-        )
-        record2= baker.make(Record, party=party, service_type=service,
-                            paid_amount=0.00, discount=0.00, rate=25, pcs=10)
+        pay = baker.make(Payment, amount=250, party=party)
+
+        PaymentService.allocate_payment(pay)
+
+        record2 = baker.make(Record, party=party, service_type=service,
+                             paid_amount=0.00, discount=0.00, rate=25, pcs=10)
 
         api_client.force_authenticate(user=user_b)
         response = api_client.patch(
@@ -180,17 +179,16 @@ class TestUpdateRecord:
                 "reason": 'testing update'
             }
         )
-        advance = AdvanceLedger.objects.get(record = record, direction = "IN")
+        log = AuditLog.objects.first()
 
-        log = AuditLog.objects.first
+        record2.refresh_from_db()
 
         assert response.status_code == status.HTTP_200_OK
         assert record.paid_amount <= Decimal("250")
-        assert  advance.amount == Decimal("150")
+        assert record2.paid_amount == Decimal("100")
         assert log.action == "UPDATE"
         assert log.model_name == 'Record'
         assert log.object_id == record_id
-
 
     def test_user_a_cannot_update_user_b_records(self, api_client):
         """User A cannot update User B's record"""

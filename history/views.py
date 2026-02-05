@@ -21,6 +21,7 @@ from .serializer import *
 from .permissions import *
 from .filters import *
 from .pagination import *
+from .service import *
 
 # starting writing code from this point !!!
 
@@ -111,42 +112,8 @@ class RecordViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
-            self.perform_create(serializer)
-            record = serializer.instance
-            party = record.party
-
-            remaining_amount = record.remaining_amount
-
-            advanceledger_qs = AdvanceLedger.objects.filter(
-                party=party,
-                direction='IN',
-                remaining_amount__gt=0
-            ).order_by(
-                'created_at')
-
-            for entry in advanceledger_qs:
-                if remaining_amount <= 0:
-                    break
-
-                used = min(remaining_amount, entry.remaining_amount)
-
-                AdvanceLedger.objects.create(
-                    party=party,
-                    payment=entry.payment,
-                    record=record,
-                    amount=used,
-                    remaining_amount=0,
-                    direction='OUT'
-                )
-
-                entry.remaining_amount -= used
-                entry.save(update_fields=['remaining_amount'])
-
-                record.paid_amount += used
-                remaining_amount -= used
-
-            record.save(update_fields=['paid_amount'])
-
+            record = serializer.save()
+            RecordService.apply_advance(record)
             return Response(self.get_serializer(record).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
@@ -161,31 +128,7 @@ class RecordViewSet(ModelViewSet):
         )
 
         with transaction.atomic():
-            party = record.party
-            advanceledger_qs = list(AdvanceLedger.objects.filter(
-                record=record, direction='OUT'))
-
-            for ledger in advanceledger_qs:
-                AdvanceLedger.objects.filter(
-                    payment=ledger.payment,
-                    party=party,
-                    direction="IN"
-                ).update(
-                    remaining_amount=F('remaining_amount') + ledger.amount
-                )
-                ledger.delete()
-
-            allocation_qs = list(Allocation.objects.filter(record=record))
-            for row in allocation_qs:
-                AdvanceLedger.objects.create(
-                    party=party,
-                    payment=row.payment,
-                    record=None,
-                    amount=row.amount,
-                    remaining_amount=row.amount,
-                    direction="IN"
-                )
-                row.delete()
+            RecordService.rollback(record)
 
             AuditLog.objects.create(
                 user=request.user,
@@ -213,82 +156,11 @@ class RecordViewSet(ModelViewSet):
             record, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
-        # Calculating new total -
-        new_pcs = serializer.validated_data.get('pcs', record.pcs)
-        new_rate = serializer.validated_data.get('rate', record.rate)
-        new_discount = serializer.validated_data.get(
-            'discount', record.discount)
-        new_amount = (new_rate * new_pcs) - new_discount
-
         with transaction.atomic():
-            # If the new amount is less than what was already paid, we have a surplus
-            if new_amount < record.paid_amount:
-                surplus = record.paid_amount - new_amount
-
-                # 1. Handle excess from AdvanceLedger (OUT entries)
-                # We reverse the 'OUT' entries and add back to the 'IN' remaining_amount
-                ledger_out_entries = AdvanceLedger.objects.filter(
-                    record=record,
-                    direction='OUT'
-                ).order_by('-created_at')
-
-                for out_entry in ledger_out_entries:
-                    if surplus <= 0:
-                        break
-
-                    refund_from_this = min(surplus, out_entry.amount)
-
-                    # Find the original 'IN' entry to put money back
-                    AdvanceLedger.objects.filter(
-                        payment=out_entry.payment,
-                        direction='IN'
-                    ).update(remaining_amount=F('remaining_amount') + refund_from_this)
-
-                    # Reduce the OUT entry amount or delete if fully reversed
-                    if refund_from_this == out_entry.amount:
-                        out_entry.delete()
-                    else:
-                        out_entry.amount -= refund_from_this
-                        out_entry.save(update_fields=['amount'])
-
-                    surplus -= refund_from_this
-
-                # 2. Handle excess from direct Allocations
-                # If surplus still exists, it means direct payments need to become Advance 'IN'
-                if surplus > 0:
-                    allocations = Allocation.objects.filter(
-                        record=record).order_by('-id')
-                    for alloc in allocations:
-                        if surplus <= 0:
-                            break
-
-                        refund_alloc = min(surplus, alloc.amount)
-
-                        # Convert this allocation into a new AdvanceLedger 'IN' entry
-                        AdvanceLedger.objects.create(
-                            party=record.party,
-                            payment=alloc.payment,
-                            amount=refund_alloc,
-                            remaining_amount=refund_alloc,
-                            direction='IN'
-                        )
-
-                        # Adjust or delete the allocation
-                        if refund_alloc == alloc.amount:
-                            alloc.delete()
-                        else:
-                            alloc.amount -= refund_alloc
-                            alloc.save(update_fields=['amount'])
-
-                        surplus -= refund_alloc
-
-                # Update the record's paid_amount to match the new max possible
-                record.paid_amount = new_amount
-
-            # Save the actual model changes
+            RecordService.adjust_after_update(
+                record, serializer.validated_data)
             record = serializer.save()
 
-            # Audit Logging
             after_state = json.loads(
                 json.dumps(RecordSerializer(record).data,
                            cls=DjangoJSONEncoder)
@@ -334,45 +206,7 @@ class PaymentViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
-
-            payment = serializer.save()
-
-            remaining_payment = payment.amount
-
-            unpaid_records = Record.objects.filter(party=payment.party,
-                                                   paid_amount__lt=ExpressionWrapper(
-                                                       F('pcs') * F('rate'),
-                                                       output_field=DecimalField()
-                                                   )
-                                                   ).order_by('record_date')
-
-            for record in unpaid_records:
-                if remaining_payment <= 0:
-                    break
-                allocated = min(record.remaining_amount, remaining_payment)
-
-                Allocation.objects.create(
-                    payment=payment,
-                    amount=allocated,
-                    record=record
-                )
-
-                record.paid_amount += allocated
-                record.save(update_fields=['paid_amount'])
-
-                remaining_payment -= allocated
-
-            if remaining_payment > 0:
-                party = payment.party
-
-                AdvanceLedger.objects.create(
-                    party=party,
-                    payment=payment,
-                    amount=remaining_payment,
-                    remaining_amount=remaining_payment,
-                    direction='IN'
-                )
-
+            payment = PaymentService.create_payment(serializer)
             return Response(self.get_serializer(payment).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
@@ -386,27 +220,7 @@ class PaymentViewSet(ModelViewSet):
         )
 
         with transaction.atomic():
-
-            allocation_qs = list(Allocation.objects.select_related(
-                'record').filter(payment=payment))
-
-            for allocations in allocation_qs:
-                record = allocations.record
-                record.paid_amount = max(
-                    0,
-                    record.paid_amount - allocations.amount
-                )
-
-                record.save(update_fields=['paid_amount'])
-                allocations.delete()
-
-            advanceledger_qs = list(AdvanceLedger.objects.filter(
-                payment=payment, direction="IN"))
-
-            if advanceledger_qs:
-
-                for ledger in advanceledger_qs:
-                    ledger.delete()
+            PaymentService.rollback_payment(payment)
 
             AuditLog.objects.create(
                 user=request.user,
@@ -443,33 +257,7 @@ class PaymentViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
-
-            allocation_qs = list(
-                Allocation.objects.select_related('record').filter(payment=payment))
-
-            for allocation in allocation_qs:
-                record = allocation.record
-                record.paid_amount = max(
-                    0,
-                    record.paid_amount - allocation.amount
-                )
-
-                record.save(update_fields=['paid_amount'])
-                allocation.delete()
-
-            advanceledger_qs = list(
-                AdvanceLedger.objects.filter(
-                    payment=payment,
-                    direction="IN"
-                )
-            )
-
-            if advanceledger_qs:
-
-                for ledger in advanceledger_qs:
-                    ledger.delete()
-
-            payment = serializer.save()
+            payment = PaymentService.update_payment(serializer)
 
             after_state = json.loads(
                 json.dumps(
@@ -477,42 +265,6 @@ class PaymentViewSet(ModelViewSet):
                     cls=DjangoJSONEncoder
                 )
             )
-
-            remaining_payment = payment.amount
-
-            unpaid_records = Record.objects.filter(party=payment.party,
-                                                   paid_amount__lt=ExpressionWrapper(
-                                                       F('pcs') * F('rate'),
-                                                       output_field=DecimalField()
-                                                   )
-                                                   ).order_by('record_date')
-
-            for record in unpaid_records:
-                if remaining_payment <= 0:
-                    break
-                allocated = min(record.remaining_amount, remaining_payment)
-
-                Allocation.objects.create(
-                    payment=payment,
-                    amount=allocated,
-                    record=record
-                )
-
-                record.paid_amount += allocated
-                record.save(update_fields=['paid_amount'])
-
-                remaining_payment -= allocated
-
-            if remaining_payment > 0:
-                party = payment.party
-
-                AdvanceLedger.objects.create(
-                    party=party,
-                    payment=payment,
-                    amount=remaining_payment,
-                    remaining_amount=remaining_payment,
-                    direction='IN'
-                )
 
             AuditLog.objects.create(
                 user=request.user,

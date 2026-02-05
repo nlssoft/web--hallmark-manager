@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from django.utils.timezone import timedelta
-from django.utils.timezone import localdate
+from django.utils.timezone import timedelta, localdate
 from .models import *
 
 
@@ -69,11 +68,10 @@ class Work_RateSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
-
     class Meta:
         model = Work_Rate
         fields = ['id', 'party__first_name', 'party__last_name',
-                  'party__logo', 'party__address' , 'rate', 'party', 'service_type']
+                  'party__logo', 'party__address', 'rate', 'party', 'service_type']
 
 
 class RecordUpdateSerializer(serializers.ModelSerializer):
@@ -103,7 +101,6 @@ class RecordUpdateSerializer(serializers.ModelSerializer):
         model = Record
         fields = ['rate', 'pcs', 'discount', 'reason']
 
-    
     def validate(self, attrs):
         rate = attrs.get("rate")
         pcs = attrs.get("pcs")
@@ -117,6 +114,7 @@ class RecordUpdateSerializer(serializers.ModelSerializer):
                 })
 
         return attrs
+
 
 class RecordSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(
@@ -230,6 +228,7 @@ class RecordCreateSerializer(serializers.ModelSerializer):
 
         return attrs
 
+
 class PaymentSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(
         max_digits=10,
@@ -255,7 +254,6 @@ class PaymentSerializer(serializers.ModelSerializer):
         source='party.address',
         read_only=True
     )
-
 
     class Meta:
         model = Payment
@@ -292,6 +290,9 @@ class PaymentUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = ['id', 'amount', 'payment_date', 'reason']
+
+    def validate_payment_date(self, value):
+        delta = localdate() - value
 
 
 class AllocationSerializer(serializers.ModelSerializer):

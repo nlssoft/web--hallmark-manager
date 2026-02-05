@@ -103,9 +103,6 @@ class Record(models.Model):
     def __str__(self):
         return f'{self.party} | {self.service_type} | {self.record_date}'
 
-    def get_amount(self, record):
-        return record.rate * record.pcs
-
     @property
     def remaining_amount(self):
         return (self.pcs*self.rate - self.discount) - self.paid_amount
@@ -117,6 +114,14 @@ class Record(models.Model):
     @property
     def amount(self):
         return (self.rate * self.pcs) - self.discount
+
+    def apply_payment(self, amount):
+        self.paid_amount = F("paid_amount") + amount
+        self.save(update_fields=["paid_amount"])
+
+    def reverse_payment(self, amount):
+        self.paid_amount = F('paid_amount') - amount
+        self.save(update_fields=["paid_amount"])
 
     class Meta:
         ordering = ['-record_date', '-pk']
