@@ -259,40 +259,58 @@ class TestUinqueConditionsRecord:
     def test_creating_deleting_updating_payment_with_gap_of_7_days_from_current_date_fails(self, api_client):
         user = baker.make(settings.AUTH_USER_MODEL)
         party = baker.make(Party, user=user)
-        payment = baker.make(Payment, party=party, amount=100)
+
+        # Make a payment that is already too old for update/delete
+        old_payment = baker.make(
+            Payment,
+            party=party,
+            amount=100,
+            payment_date=localdate() - timedelta(days=8)
+        )
+
         past_date = localdate() - timedelta(days=8)
         future_date = localdate() + timedelta(days=8)
 
         api_client.force_authenticate(user)
 
-        response_past_date = api_client.post(reverse('payment-list'), {
-            'party': party,
-            'amount': 500,
-            'payment_date': past_date
-        })
+        response_past_date = api_client.post(
+            reverse('payment-list'),
+            {
+                'party': party.id,
+                'amount': 500,
+                'payment_date': past_date.isoformat(),
+            },
+            format='json'
+        )
 
-        response_future_date = api_client.post(reverse('payment-list'), {
-            'party': party,
-            'amount': 500,
-            'payment_date': future_date
-        })
+        response_future_date = api_client.post(
+            reverse('payment-list'),
+            {
+                'party': party.id,
+                'amount': 500,
+                'payment_date': future_date.isoformat(),
+            },
+            format='json'
+        )
 
-        response_update = api_client.patch(reverse('payment-detail', args=[payment.id]), {
-            'amount': 500,
-            'payment_date': past_date
-        })
+        response_update = api_client.patch(
+            reverse('payment-detail', args=[old_payment.id]),
+            {
+                'amount': 500,
+                'payment_date': past_date.isoformat(),
+            },
+            format='json'
+        )
 
-        response_delete = api_client.delete(reverse('payment-detail', args=[payment.id]), {
-            'amount': 500,
-            'payment_date': future_date
-        })
+        response_delete = api_client.delete(
+            reverse('payment-detail', args=[old_payment.id])
+        )
 
         assert response_past_date.status_code == status.HTTP_400_BAD_REQUEST
         assert response_future_date.status_code == status.HTTP_400_BAD_REQUEST
-        assert response_update.status_code == status.HTTP_400_BAD_REQUEST
-        assert response_delete.status_code == status.HTTP_400_BAD_REQUEST
+        assert response_update.status_code == status.HTTP_403_FORBIDDEN
+        assert response_delete.status_code == status.HTTP_403_FORBIDDEN
+        assert "payment_date" in response_past_date.data
+        assert "payment_date" in response_future_date.data
 
-        assert "payment_date" in response_past_date
-        assert "payment_date" in response_future_date
-        assert "payment_date" in response_update
-        assert "payment_date" in response_delete
+

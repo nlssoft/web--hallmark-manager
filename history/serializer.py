@@ -287,12 +287,24 @@ class PaymentUpdateSerializer(serializers.ModelSerializer):
         min_value=1
     )
 
+    payment_date = serializers.DateField(required=False)
+
     class Meta:
         model = Payment
         fields = ['id', 'amount', 'payment_date', 'reason']
 
     def validate_payment_date(self, value):
         delta = localdate() - value
+
+        if delta < timedelta(days=0):
+            raise serializers.ValidationError(
+                "Payment date cannot be in the future."
+            )
+        if delta > timedelta(days=7):
+            raise serializers.ValidationError(
+                "Cannot update payments older than 7 days."
+            )
+        return value
 
 
 class AllocationSerializer(serializers.ModelSerializer):
