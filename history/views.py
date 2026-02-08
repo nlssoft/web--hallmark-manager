@@ -4,7 +4,7 @@
 
 import json
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Q, F, Value, Func, ExpressionWrapper, DecimalField
+from django.db.models import Q, F, Value, Func, ExpressionWrapper, DecimalField, aggregates, Sum
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import render, get_object_or_404
@@ -12,6 +12,7 @@ from django.db.models.aggregates import Count
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from django.utils.timezone import now
 from datetime import timedelta
@@ -280,17 +281,6 @@ class PaymentViewSet(ModelViewSet):
             return Response(self.get_serializer(payment).data, status=status.HTTP_200_OK)
 
 
-class AllocationViewSet(ReadOnlyModelViewSet):
-    serializer_class = AllocationSerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = AllocationFilter
-    pagination_class = NormalPagination
-
-    def get_queryset(self):
-        return Allocation.objects.filter(payment__party__user=self.request.user)
-
-
 class AdvanceLedgerViewSet(ReadOnlyModelViewSet):
     serializer_class = AdvanceLedgerSerializer
     permission_classes = [IsAuthenticated]
@@ -312,3 +302,207 @@ class AuditLogViewSet(ReadOnlyModelViewSet):
     def get_queryset(self):
         return AuditLog.objects.filter(user=self.request.user)\
             .select_related('party').order_by('-created_at', '-pk')
+
+
+class SummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def spine(self, qs, party, party_id, date_field, date_from, date_to):
+        if party == "single":
+            qs = qs.filter(party_id=party_id)
+
+        if date_from:
+            qs = qs.filter(**{f"{date_field}__gte": date_from})
+
+        if date_to:
+            qs = qs.filter(**{f"{date_field}__lte": date_to})
+
+        return qs
+
+    def get(self, request):
+        user = request.user
+        params = request.query_params
+
+        party = params.get("party")              # all | single
+        party_id = params.get("party_id")
+        date_from = params.get("date_from")
+        date_to = params.get("date_to")
+        data_type = params.get("type", "").lower()
+
+        page = int(params.get("page", 1))
+        page_size = int(params.get("page_size", 20))
+        offset = (page - 1) * page_size
+        limit = offset + page_size
+
+        # ================= RECORD =================
+
+        if data_type == "record":
+            qs = Record.objects.filter(party__user=user)
+            qs = self.spine(qs, party, party_id,
+                            "record_date", date_from, date_to)
+
+            qs = qs.annotate(
+                amount=ExpressionWrapper(
+                    F("rate") * F("pcs") - F("discount"),
+                    output_field=DecimalField()
+                ),
+                remaining_amount=ExpressionWrapper(
+                    (F("rate") * F("pcs") - F("discount")) - F("paid_amount"),
+                    output_field=DecimalField()
+                )
+            )
+
+            status = params.get("status")
+
+            if status == "paid":
+                qs = qs.filter(remaining_amount=0)
+            elif status == "unpaid":
+                qs = qs.filter(remaining_amount__gt=0)
+
+            total_count = qs.count()
+
+            summary = qs.aggregate(
+                total_amount=Sum('amount'),
+                unpaid_amount=Sum('remaining_amount'),
+                total_pcs=Sum('pcs')
+            )
+
+            service_type_summary = qs.values('service_type__type_of_work').annotate(
+                total_amount=Sum('amount'),
+                unpaid_amount=Sum('remaining_amount'),
+                total_pcs=Sum('pcs')
+            )
+
+            data = list(qs.order_by("record_date")[offset:limit].values(
+                "id", "record_date", 'pcs', 'rate', "amount", 'discount', 'paid_amount', 'remaining_amount',
+                first_name=F('party__first_name'),
+                last_name=F('party__last_name'),
+            ))
+
+            return Response(
+                {
+                    "type": "Record",
+                    "summary": {
+                        "total_record": total_count,
+                        'total_amount': summary['total_amount'] or 0,
+                        "unpaid_amount": summary['unpaid_amount'] or 0,
+                        'total_pcs': summary['total_pcs'] or 0,
+                        'service_type_summary': list(service_type_summary)
+                    },
+                    "pagination": {
+                        'page': page,
+                        'page_size': page_size,
+                        'total': total_count
+                    }, "result": data,
+                }
+            )
+
+            # ================= PAYMENT =================
+
+        elif data_type == 'payment':
+            qs = Payment.objects.filter(party__user=user)
+            qs = self.spine(qs, party, party_id,
+                            'payment_date', date_from, date_to)
+
+            total_payments = qs.count()
+            total_paid = qs.aggregate(total=Sum('amount'))['total'] or 0
+
+            data = list(qs.order_by('payment_date')[offset:limit].values(
+                "id", 'payment_date', 'amount',
+                first_name=F('party__first_name'),
+                last_name=F('party__last_name'),
+            ))
+
+            return Response({
+                'type': 'payment',
+                'summary': {
+                    'total_payments': total_payments,
+                    'total_paid': total_paid,
+                },
+                'pagination': {
+                    'page': page,
+                    'page_size': page_size,
+                    'total': total_payments,
+                },
+                'result': data
+            })
+
+            # ================= ADVANCE =================
+
+        elif data_type == 'advance_ledger':
+            qs = AdvanceLedger.objects.filter(party__user=user)
+            qs = self.spine(qs, party, party_id,
+                            'created_at', date_from, date_to)
+
+            direction = params.get('direction')
+            if direction in ['IN', 'OUT']:
+                qs = qs.filter(direction=direction)
+
+            total_in = qs.filter(direction="IN").aggregate(
+                total=Sum('amount'))['total'] or 0
+            total_out = qs.filter(direction='OUT').aggregate(
+                total=Sum('amount'))['total'] or 0
+
+            total_ledger = qs.count()
+
+            data = list(qs.order_by('created_at')[offset:limit].values(
+                "id", "created_at", "direction", "amount", 'remaining_amount',
+                first_name=F('party__first_name'),
+                last_name=F('party__last_name'),
+                payment_date=F('payment__payment_date'),
+                payment_amount=F('payment__amount'),
+                record_date=F('record__record_date'),
+                record_pcs=F('record__pcs'),
+                record_type_of_work=F('record__service_type__type__of_work')
+            ))
+
+            return Response({
+                "type": "advance_ledger",
+                "summary": {
+                    "total_in": total_in,
+                    "total_out": total_out,
+                    "net_balance": total_in - total_out,
+                },
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total": total_ledger,
+                },
+                "results": data,
+            })
+
+            # ================= AUDIT =================
+
+        elif data_type == "audit":
+            qs = AuditLog.objects.filter(user=user)
+
+            model = params.get("model")
+            action = params.get("action")
+
+            if model:
+                qs = qs.filter(model_name=model)
+            if action:
+                qs = qs.filter(action=action)
+
+            total_count = qs.count()
+
+            data = list(qs.order_by("-created_at")[offset:limit].values(
+                "id", "model_name", "action", "created_at", 'before', 'after',
+                first_name=F('party__first_name'),
+                last_name=F('party__last_name'),
+            ))
+
+            return Response({
+                "type": "audit",
+                "summary": {
+                    "total_logs": total_count
+                },
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total": total_count,
+                },
+                "results": data,
+            })
+
+        return Response({"error": "Invalid type"}, status=400)

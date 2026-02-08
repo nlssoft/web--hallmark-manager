@@ -307,16 +307,11 @@ class PaymentUpdateSerializer(serializers.ModelSerializer):
         return value
 
 
-class AllocationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Allocation
-        fields = ['amount', 'payment', 'record']
-
-
 class AdvanceLedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdvanceLedger
-        fields = ['id', 'party', 'payment', 'record',
+        fields = ['id', 'party__logo', 'party__first_name', 'party__last_name', 'payment__payment_date',
+                  'payment__amount', 'record__record_date', 'record__pcs', 'record__service_type__type__of_work'
                   'amount', 'direction', 'created_at']
 
 
@@ -324,4 +319,4 @@ class AuditLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuditLog
         fields = ['object_id', 'model_name', 'action',
-                  'before', 'after', 'reason', 'created_at']
+                  'before', 'after', 'reason', 'created_at', 'party__first_name', 'party__last_name']

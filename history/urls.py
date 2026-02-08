@@ -10,10 +10,11 @@ router.register('service-type', views.Service_TypeViewSet,
                 basename='service-type')
 router.register('record', views.RecordViewSet, basename='record')
 router.register('payment', views.PaymentViewSet, basename='payment')
-router.register('allocation', views.AllocationViewSet, basename='allocation')
 router.register('advance-ledger', views.AdvanceLedgerViewSet,
                 basename='advance-ledger')
-router.register('audit-log', views.AuditLogViewSet, basename='audit=log')
+router.register('audit-log', views.AuditLogViewSet, basename='audit-log')
 
 
-urlpatterns = router.urls 
+urlpatterns = [
+    path('summary/', views.SummaryView.as_view(), name='summary')
+] + router.urls

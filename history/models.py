@@ -189,6 +189,7 @@ class AdvanceLedger(models.Model):
         max_length=3,
         choices=[("IN", "IN"), ("OUT", "OUT")]
     )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
