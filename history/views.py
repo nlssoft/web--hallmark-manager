@@ -334,8 +334,6 @@ class SummaryView(APIView):
         offset = (page - 1) * page_size
         limit = offset + page_size
 
-        # ================= RECORD =================
-
         if data_type == "record":
             qs = Record.objects.filter(party__user=user)
             qs = self.spine(qs, party, party_id,
@@ -352,7 +350,7 @@ class SummaryView(APIView):
                 )
             )
 
-            status = params.get("status")
+            status = params.get("status", "").lower()
 
             if status == "paid":
                 qs = qs.filter(remaining_amount=0)
@@ -473,21 +471,21 @@ class SummaryView(APIView):
 
             # ================= AUDIT =================
 
-        elif data_type == "audit":
+        elif data_type == "audit_log":
             qs = AuditLog.objects.filter(user=user)
 
             model = params.get("model")
             action = params.get("action")
 
             if model:
-                qs = qs.filter(model_name=model)
+                qs = qs.filter(model_name__iexact=model)
             if action:
-                qs = qs.filter(action=action)
+                qs = qs.filter(action__iexact=action)
 
             total_count = qs.count()
 
             data = list(qs.order_by("-created_at")[offset:limit].values(
-                "id", "model_name", "action", "created_at", 'before', 'after',
+                "id", 'object_id', "model_name", "action", "created_at", 'before', 'after',
                 first_name=F('party__first_name'),
                 last_name=F('party__last_name'),
             ))
