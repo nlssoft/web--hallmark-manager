@@ -433,25 +433,26 @@ class SummaryView(APIView):
                             'created_at', date_from, date_to)
 
             direction = params.get('direction')
-            if direction in ['IN', 'OUT']:
-                qs = qs.filter(direction=direction)
 
             total_in = qs.filter(direction="IN").aggregate(
                 total=Sum('amount'))['total'] or 0
             total_out = qs.filter(direction='OUT').aggregate(
                 total=Sum('amount'))['total'] or 0
 
+            if direction in ['IN', 'OUT']:
+                qs = qs.filter(direction=direction)
+
             total_ledger = qs.count()
 
             data = list(qs.order_by('created_at')[offset:limit].values(
-                "id", "created_at", "direction", "amount", 'remaining_amount',
+                "id", "created_at", "direction", "amount", 'remaining_amount', 'payment_id', 'record_id',
                 first_name=F('party__first_name'),
                 last_name=F('party__last_name'),
                 payment_date=F('payment__payment_date'),
                 payment_amount=F('payment__amount'),
                 record_date=F('record__record_date'),
                 record_pcs=F('record__pcs'),
-                record_type_of_work=F('record__service_type__type__of_work')
+                record_type_of_work=F('record__service_type__type_of_work')
             ))
 
             return Response({
