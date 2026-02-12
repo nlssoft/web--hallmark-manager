@@ -11,12 +11,14 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import render, get_object_or_404
 from django.db.models.aggregates import Count
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from django.utils.timezone import now
 from datetime import timedelta
+from collections import defaultdict
 
 from .models import *
 from .serializer import *
@@ -534,26 +536,93 @@ class SummaryView(APIView):
 
 class PaymentRequestviewset(ModelViewSet):
     serializer_class = PaymentRequestSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, PaymentRequestSaftyNet]
 
     def get_queryset(self):
         if self.request.user.parent:
-            return Payment_Request.objects.filter(created_by=self.request.user)
+            return Payment_Request.objects.filter(created_by=self.request.user).exclude(payment_request='A')
         return Payment_Request.objects.filter(created_by__parent=self.request.user)
 
     def perform_create(self, serializer):
         user = self.request.user
-        record = serializer.validated_data['record']
-        request_amount = (record.pcs * record.rate) - record.discount
-        party = record.party
+        records = serializer.validated_data['record']
 
-        serializer.save(
-            created_by=user,
-            party=party,
-            request_amount=request_amount
-        )
+        grouped = defaultdict(list)
+
+        for record in records:
+            grouped[record.party].append(record)
+
+        created_request= []
+        with transaction.atomic():
+            for party, party_record in grouped.items():
+                total = sum(
+                    (record.pcs * record.rate) - record.discount
+                    for r in party_record
+                )
+
+                pr = Payment_Request.objects.create(
+                    created_by = user,
+                    party = party,
+                    requested_amount = total 
+                )
+
+                pr.record.set(party_record)
+                created_request.append(pr)
+
+            return created_request
 
     def get_serializer_context(self):
         contesxt = super().get_serializer_context()
         contesxt['request'] = self.request
         return contesxt
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        pr = self.get_object()
+
+        if request.user.parent:
+            raise PermissionDenied('Only Admin can approve request.')
+        if pr.party.user !=  request.user:
+            raise PermissionDenied('Not your record.')
+
+        if pr.status != 'P':
+            raise ValidationError('Already processed.')
+        
+        with transaction.atomic():
+            pr = Payment_Request.objects.select_for_update().get(pk=pr.pk)
+
+            if pr.status != 'P':
+                raise ValidationError('Already processed.')
+            
+            Payment.objects.create(
+                party = pr.party,
+                amount = pr.requested_amount
+            )
+
+            pr.status= 'A'
+            pr.save()
+
+        
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+
+        pr = self.get_object()
+
+        # Only main account
+        if request.user.parent:
+            raise PermissionDenied("Only main account can reject")
+
+        # Must belong to this main account
+        if pr.party.owner != request.user:
+            raise PermissionDenied("Not your request")
+
+        # Only pending can be rejected
+        if pr.status != "PENDING":
+            raise ValidationError("Already processed")
+
+        pr.status = "REJECTED"
+        pr.rejection_reason = request.data.get("reason", "")
+        pr.save()
+
+        return Response({"status": "rejected"})
+

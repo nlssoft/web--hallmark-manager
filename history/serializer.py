@@ -331,7 +331,7 @@ class PaymentRequestSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_by',
                             'created_at', 'status', 'requested_amount', 'id']
 
-    def validate_record(self, data):
+    def validate(self, data):
         user = self.context['request'].user
         records = data['record']
 
@@ -353,7 +353,8 @@ class PaymentRequestSerializer(serializers.ModelSerializer):
                     'Record is already requested.')
 
             partys.add(record.party.id)
-
+            
+        return data
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._apply_record_filter()

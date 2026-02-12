@@ -230,5 +230,6 @@ class Payment_Request(models.Model):
     record = models.ManyToManyField(Record)
     requested_amount = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
+    rejected_reason = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=1, choices=[(
         "P", "PENDING"), ("A", "APPROVED"), ("R", "REJECTED")], default='P')
