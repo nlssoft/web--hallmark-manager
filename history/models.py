@@ -9,7 +9,7 @@ from decimal import Decimal
 
 class Party(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE)
+                             on_delete=models.CASCADE, related_name='owner')
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255, blank=True, null=True)
     number = models.CharField(max_length=255, null=True,  blank=True)
@@ -17,6 +17,10 @@ class Party(models.Model):
         max_length=255, blank=True, null=True)
     address = models.TextField(null=True, blank=True)
     logo = models.CharField(max_length=10, null=True, blank=True)
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                    blank=True, null=True,
+                                    on_delete=models.SET_NULL,
+                                    related_name='employ')
 
     @property
     def owner(self):
@@ -101,7 +105,7 @@ class Record(models.Model):
         max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
     def __str__(self):
-        return f'{self.party} | {self.service_type} | {self.record_date}'
+        return f'{self.party} | {self.service_type} | {self.pcs} | {self.rate} | {self.record_date}'
 
     @property
     def remaining_amount(self):
@@ -217,3 +221,14 @@ class AuditLog(models.Model):
 
     class Meta:
         ordering = ['-pk']
+
+
+class Payment_Request(models.Model):
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    party = models.ForeignKey(Party, on_delete=models.CASCADE)
+    record = models.ManyToManyField(Record)
+    requested_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=1, choices=[(
+        "P", "PENDING"), ("A", "APPROVED"), ("R", "REJECTED")], default='P')

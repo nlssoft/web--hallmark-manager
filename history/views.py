@@ -4,6 +4,7 @@
 
 import json
 from django.core.serializers.json import DjangoJSONEncoder
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q, F, Value, Func, ExpressionWrapper, DecimalField, aggregates, Sum
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
@@ -35,6 +36,8 @@ class PartyViewSet(ModelViewSet):
     pagination_class = NormalPagination
 
     def get_queryset(self):
+        if self.request.user.parent:
+            return Party.objects.filter(assigned_to=self.request.user)
         return Party.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
@@ -61,6 +64,8 @@ class Work_RateViewSet(ModelViewSet):
     pagination_class = NormalPagination
 
     def get_queryset(self):
+        if self.request.user.parent:
+            raise PermissionDenied('Unauthorized access.')
         return Work_Rate.objects.filter(party__user=self.request.user)\
             .select_related('party', 'service_type')
 
@@ -91,6 +96,9 @@ class RecordViewSet(ModelViewSet):
     pagination_class = NormalPagination
 
     def get_serializer_class(self, *args, **kwargs):
+        if self.request.user.parent:
+            raise PermissionDenied('Unauthorized access.')
+
         if self.action in ['list', 'retrieve']:
             return RecordSerializer
         elif self.action in ['update', 'partial_update']:
@@ -188,6 +196,8 @@ class PaymentViewSet(ModelViewSet):
     pagination_class = NormalPagination
 
     def get_queryset(self):
+        if self.request.user.parent:
+            raise PermissionDenied('Unauthorized access.')
         return Payment.objects.filter(party__user=self.request.user)\
             .select_related('party')
 
@@ -289,6 +299,8 @@ class AdvanceLedgerViewSet(ReadOnlyModelViewSet):
     pagination_class = NormalPagination
 
     def get_queryset(self):
+        if self.request.user.parent:
+            raise PermissionDenied('Unauthorized access.')
         return AdvanceLedger.objects.filter(party__user=self.request.user)
 
 
@@ -300,6 +312,8 @@ class AuditLogViewSet(ReadOnlyModelViewSet):
     pagination_class = NormalPagination
 
     def get_queryset(self):
+        if self.request.user.parent:
+            raise PermissionDenied('Unauthorized access.')
         return AuditLog.objects.filter(user=self.request.user)\
             .select_related('party').order_by('-created_at', '-pk')
 
@@ -335,7 +349,11 @@ class SummaryView(APIView):
         limit = offset + page_size
 
         if data_type == "record":
-            qs = Record.objects.filter(party__user=user)
+            if user.parent:
+                qs = Record.objects.filter(party__assigned_to=user)
+            else:
+                qs = Record.objects.filter(party__user=user)
+
             qs = self.spine(qs, party, party_id,
                             "record_date", date_from, date_to)
 
@@ -398,7 +416,10 @@ class SummaryView(APIView):
             # ================= PAYMENT =================
 
         elif data_type == 'payment':
-            qs = Payment.objects.filter(party__user=user)
+            if user.parent:
+                qs = Record.objects.filter(party__assigned_to=user)
+            else:
+                qs = Payment.objects.filter(party__user=user)
             qs = self.spine(qs, party, party_id,
                             'payment_date', date_from, date_to)
 
@@ -428,7 +449,11 @@ class SummaryView(APIView):
             # ================= ADVANCE =================
 
         elif data_type == 'advance_ledger':
-            qs = AdvanceLedger.objects.filter(party__user=user)
+            if user.parent:
+                qs = Record.objects.filter(party__assigned_to=user)
+            else:
+                qs = AdvanceLedger.objects.filter(party__user=user)
+
             qs = self.spine(qs, party, party_id,
                             'created_at', date_from, date_to)
 
@@ -505,3 +530,30 @@ class SummaryView(APIView):
             })
 
         return Response({"error": "Invalid type"}, status=400)
+
+
+class PaymentRequestviewset(ModelViewSet):
+    serializer_class = PaymentRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.parent:
+            return Payment_Request.objects.filter(created_by=self.request.user)
+        return Payment_Request.objects.filter(created_by__parent=self.request.user)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        record = serializer.validated_data['record']
+        request_amount = (record.pcs * record.rate) - record.discount
+        party = record.party
+
+        serializer.save(
+            created_by=user,
+            party=party,
+            request_amount=request_amount
+        )
+
+    def get_serializer_context(self):
+        contesxt = super().get_serializer_context()
+        contesxt['request'] = self.request
+        return contesxt

@@ -320,3 +320,57 @@ class AuditLogSerializer(serializers.ModelSerializer):
         model = AuditLog
         fields = ['object_id', 'model_name', 'action',
                   'before', 'after', 'reason', 'created_at', 'party__first_name', 'party__last_name']
+
+
+class PaymentRequestSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Payment_Request
+        fields = ['id', 'created_by', 'record',
+                  'requested_amount', 'created_at', 'status']
+        read_only_fields = ['created_by',
+                            'created_at', 'status', 'requested_amount', 'id']
+
+    def validate_record(self, data):
+        user = self.context['request'].user
+        records = data['record']
+
+        if user.parent:
+            raise serializers.ValidationError(
+                "Only employees can create requests.")
+
+        partys = set()
+        for record in records:
+
+            if record.party.assigned_to != user:
+                raise serializers.ValidationError("Invalid record.")
+
+            if record.remaining_amount == 0:
+                raise serializers.ValidationError('Record is already paid.')
+
+            if Payment_Request.objects.filter(record=record, status='p').exists():
+                raise serializers.ValidationError(
+                    'Record is already requested.')
+
+            partys.add(record.party.id)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._apply_record_filter()
+
+    def _apply_record_filter(self):
+        request = self.context.get('request')
+
+        if not request or not hasattr(request, 'user'):
+            return
+
+        user = request.user
+
+        if user.parent:
+            record_filter = {'party__assigned_to': user}
+
+        else:
+            record_filter = {'party__user': user}
+
+        self.fields['record'].queryset = Record.objects.filter(
+            **record_filter)

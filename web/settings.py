@@ -155,10 +155,15 @@ AUTH_USER_MODEL = 'core.User'
 
 DJOSER = {
     'SERIALIZERS': {
-        'user_create': 'core.serializer.UserCreateSerializer',
-        'current_user': 'core.serializer.UserSerializer',
+        'user_create': 'core.serializers.UserCreateSerializer',
         'user': 'core.serializers.UserSerializer',
-    }
+        'current_user': 'core.serializers.UserSerializer',
+    },
+    'LOGIN_FIELD': 'username',
+    'USER_CREATE_PASSWORD_RETYPE': True,
+    'SEND_ACTIVATION_EMAIL': False,
+    #     'PASSWORD_RESET_URL':pass,
+    #     'ACTIVATION_URL': pass
 }
 
 
@@ -166,4 +171,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
     "ACCESS_TOKEN_LIFETIME": timedelta(days=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': False,
 }

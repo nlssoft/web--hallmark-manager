@@ -13,7 +13,8 @@ router.register('payment', views.PaymentViewSet, basename='payment')
 router.register('advance-ledger', views.AdvanceLedgerViewSet,
                 basename='advance-ledger')
 router.register('audit-log', views.AuditLogViewSet, basename='audit-log')
-
+router.register('request-payment', views.PaymentRequestviewset,
+                basename='request-payment')
 
 urlpatterns = [
     path('summary/', views.SummaryView.as_view(), name='summary')
