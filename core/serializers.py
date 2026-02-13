@@ -29,3 +29,18 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['email', 'number', 'address', 'first_name', 'last_name']
+
+
+class EmployCreateView(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email', 'number', 'address']
+        extra_kwargs = {
+
+            'password' : {'write_only': True}
+        }
+
+        def create(self, validated_data):
+            main_user = self.context['request'].user
+
+        if main_user.

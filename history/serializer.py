@@ -375,3 +375,4 @@ class PaymentRequestSerializer(serializers.ModelSerializer):
 
         self.fields['record'].queryset = Record.objects.filter(
             **record_filter)
+
