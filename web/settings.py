@@ -159,9 +159,9 @@ DJOSER = {
         'user': 'core.serializers.UserSerializer',
         'current_user': 'core.serializers.UserSerializer',
     },
-    'LOGIN_FIELD': 'username',
-    'USER_CREATE_PASSWORD_RETYPE': True,
-    'SEND_ACTIVATION_EMAIL': False,
+    # 'LOGIN_FIELD': 'username',
+    # 'USER_CREATE_PASSWORD_RETYPE': True,
+    # 'SEND_ACTIVATION_EMAIL': False,
     #     'PASSWORD_RESET_URL':pass,
     #     'ACTIVATION_URL': pass
 }

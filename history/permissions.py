@@ -26,12 +26,11 @@ class PaymentRequestSaftyNet(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
-        
+
         if view.action in ['approve', 'reject']:
             return not request.user.parent
-        
+
         if self.status in ['A', 'R']:
             return False
-        
+
         return True
-        

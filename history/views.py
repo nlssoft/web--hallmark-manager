@@ -10,7 +10,7 @@ from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import render, get_object_or_404
 from django.db.models.aggregates import Count
-from rest_framework import status
+
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -552,7 +552,7 @@ class PaymentRequestviewset(ModelViewSet):
         for record in records:
             grouped[record.party].append(record)
 
-        created_request= []
+        created_request = []
         with transaction.atomic():
             for party, party_record in grouped.items():
                 total = sum(
@@ -561,9 +561,9 @@ class PaymentRequestviewset(ModelViewSet):
                 )
 
                 pr = Payment_Request.objects.create(
-                    created_by = user,
-                    party = party,
-                    requested_amount = total 
+                    created_by=user,
+                    party=party,
+                    requested_amount=total
                 )
 
                 pr.record.set(party_record)
@@ -582,27 +582,26 @@ class PaymentRequestviewset(ModelViewSet):
 
         if request.user.parent:
             raise PermissionDenied('Only Admin can approve request.')
-        if pr.party.user !=  request.user:
+        if pr.party.user != request.user:
             raise PermissionDenied('Not your record.')
 
         if pr.status != 'P':
             raise ValidationError('Already processed.')
-        
+
         with transaction.atomic():
             pr = Payment_Request.objects.select_for_update().get(pk=pr.pk)
 
             if pr.status != 'P':
                 raise ValidationError('Already processed.')
-            
+
             Payment.objects.create(
-                party = pr.party,
-                amount = pr.requested_amount
+                party=pr.party,
+                amount=pr.requested_amount
             )
 
-            pr.status= 'A'
+            pr.status = 'A'
             pr.save()
 
-        
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
 
@@ -625,4 +624,3 @@ class PaymentRequestviewset(ModelViewSet):
         pr.save()
 
         return Response({"status": "rejected"})
-

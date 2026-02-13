@@ -31,16 +31,20 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         fields = ['email', 'number', 'address', 'first_name', 'last_name']
 
 
-class EmployCreateView(serializers.ModelSerializer):
+class EmployeeCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'email', 'number', 'address']
+        fields = ['id', 'username', 'first_name',
+                  'last_name', 'email', 'number', 'address', 'password']
         extra_kwargs = {
 
-            'password' : {'write_only': True}
+            'password': {'write_only': True}
         }
 
-        def create(self, validated_data):
-            main_user = self.context['request'].user
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
 
-        if main_user.
+        return user
