@@ -545,6 +545,7 @@ class SummaryView(APIView):
 class PaymentRequestviewset(ModelViewSet):
     serializer_class = PaymentRequestSerializer
     permission_classes = [IsAuthenticated, PaymentRequestLimitastion]
+    pagination_class = NormalPagination
 
     def get_queryset(self):
         if self.request.user.parent:

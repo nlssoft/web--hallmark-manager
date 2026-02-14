@@ -33,7 +33,7 @@ class Party(models.Model):
     def due(self):
         total_work = self.record_set.aggregate(
             total=Sum(ExpressionWrapper(
-                F('rate') * F('pcs'),
+                (F('rate') * F('pcs')) - F('discount'),
                 output_field=DecimalField()
             )
             )
