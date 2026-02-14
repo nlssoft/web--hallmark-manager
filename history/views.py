@@ -4,21 +4,23 @@
 
 import json
 from django.core.serializers.json import DjangoJSONEncoder
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q, F, Value, Func, ExpressionWrapper, DecimalField, aggregates, Sum
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import render, get_object_or_404
 from django.db.models.aggregates import Count
-
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from django.utils.timezone import now
 from datetime import timedelta
 from collections import defaultdict
+
 
 from .models import *
 from .serializer import *
@@ -32,7 +34,7 @@ from .service import *
 
 class PartyViewSet(ModelViewSet):
     serializer_class = PartySerializer
-    permission_classes = [IsAuthenticated, IsOwner]
+    permission_classes = [IsAuthenticated, IsOwner, IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = PartyFilter
     pagination_class = NormalPagination
@@ -43,6 +45,8 @@ class PartyViewSet(ModelViewSet):
         return Party.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
+        if self.request.user.parent:
+            raise PermissionDenied("Only main account can create party.")
         serializer.save(user=self.request.user)
 
     def destroy(self, request, *args, **kwargs):
@@ -77,6 +81,9 @@ class Service_TypeViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if self.request.user.parent:
+            raise PermissionDenied('Unauthorized access.')
+
         today = now().date()
         month_start = today.replace(day=1)
 
@@ -98,8 +105,6 @@ class RecordViewSet(ModelViewSet):
     pagination_class = NormalPagination
 
     def get_serializer_class(self, *args, **kwargs):
-        if self.request.user.parent:
-            raise PermissionDenied('Unauthorized access.')
 
         if self.action in ['list', 'retrieve']:
             return RecordSerializer
@@ -111,6 +116,9 @@ class RecordViewSet(ModelViewSet):
         return RecordSerializer
 
     def get_queryset(self):
+        if self.request.user.parent:
+            raise PermissionDenied('Unauthorized access.')
+
         return Record.objects.filter(
             party__user=self.request.user
         ).select_related(
@@ -536,29 +544,29 @@ class SummaryView(APIView):
 
 class PaymentRequestviewset(ModelViewSet):
     serializer_class = PaymentRequestSerializer
-    permission_classes = [IsAuthenticated, PaymentRequestSaftyNet]
+    permission_classes = [IsAuthenticated, PaymentRequestLimitastion]
 
     def get_queryset(self):
         if self.request.user.parent:
-            return Payment_Request.objects.filter(created_by=self.request.user).exclude(payment_request='A')
+            return Payment_Request.objects.filter(created_by=self.request.user).exclude(status='A')
         return Payment_Request.objects.filter(created_by__parent=self.request.user)
 
-    def perform_create(self, serializer):
-        user = self.request.user
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
         records = serializer.validated_data['record']
 
         grouped = defaultdict(list)
-
         for record in records:
             grouped[record.party].append(record)
 
         created_request = []
+
         with transaction.atomic():
             for party, party_record in grouped.items():
-                total = sum(
-                    (record.pcs * record.rate) - record.discount
-                    for r in party_record
-                )
+                total = sum(r.remaining_amount for r in party_record)
 
                 pr = Payment_Request.objects.create(
                     created_by=user,
@@ -569,12 +577,15 @@ class PaymentRequestviewset(ModelViewSet):
                 pr.record.set(party_record)
                 created_request.append(pr)
 
-            return created_request
+            response_serializer = PaymentRequestSerializer(
+                created_request,
+                many=True
+            )
 
-    def get_serializer_context(self):
-        contesxt = super().get_serializer_context()
-        contesxt['request'] = self.request
-        return contesxt
+            return Response(
+                response_serializer.data,
+                status=status.HTTP_201_CREATED
+            )
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
@@ -582,17 +593,18 @@ class PaymentRequestviewset(ModelViewSet):
 
         if request.user.parent:
             raise PermissionDenied('Only Admin can approve request.')
+
         if pr.party.user != request.user:
             raise PermissionDenied('Not your record.')
 
         if pr.status != 'P':
-            raise ValidationError('Already processed.')
+            return Response(
+                {"detail": "Already processed."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         with transaction.atomic():
             pr = Payment_Request.objects.select_for_update().get(pk=pr.pk)
-
-            if pr.status != 'P':
-                raise ValidationError('Already processed.')
 
             Payment.objects.create(
                 party=pr.party,
@@ -601,6 +613,7 @@ class PaymentRequestviewset(ModelViewSet):
 
             pr.status = 'A'
             pr.save()
+            return Response({"status": "approved"}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
@@ -616,11 +629,14 @@ class PaymentRequestviewset(ModelViewSet):
             raise PermissionDenied("Not your request")
 
         # Only pending can be rejected
-        if pr.status != "PENDING":
-            raise ValidationError("Already processed")
+        if pr.status != 'P':
+            return Response(
+                {"detail": "Already processed."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        pr.status = "REJECTED"
-        pr.rejection_reason = request.data.get("reason", "")
+        pr.status = "R"
+        pr.rejected_reason = request.data.get("reason", "")
         pr.save()
 
         return Response({"status": "rejected"})

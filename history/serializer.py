@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.utils.timezone import timedelta, localdate
 from .models import *
+from django.contrib.auth import get_user_model
 
 
 class PartySerializer(serializers.ModelSerializer):
@@ -19,6 +20,16 @@ class PartySerializer(serializers.ModelSerializer):
 
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        request = self.context.get('request')
+
+        if request and not request.user.parent:
+            user = get_user_model()
+            self.fields['assigned_to'].queryset = user.objects.filter(
+                parent=request.user)
+
     class Meta:
         model = Party
         fields = ['id',
@@ -28,9 +39,30 @@ class PartySerializer(serializers.ModelSerializer):
                   'number',
                   'email',
                   'address',
+                  'assigned_to',
                   'due',
-                  'advance_balance'
+                  'advance_balance',
+
                   ]
+
+        extra_kwargs = {
+            'assigned_to': {'required': False, "allow_null": True}
+        }
+
+    def validate_assigned_to(self, value):
+        request = self.context.get('request')
+        if not request:
+            return value
+        user = request.user
+
+        if user.parent and value is not None:
+            raise serializers.ValidationError('Only Admin can assign party.')
+
+        if value is not None and value.parent_id != user.id:
+            raise serializers.ValidationError(
+                'You can only assign your own employee.')
+
+        return value
 
 
 class Service_TypeSerializer(serializers.ModelSerializer):
@@ -74,32 +106,7 @@ class Work_RateSerializer(serializers.ModelSerializer):
                   'party__logo', 'party__address', 'rate', 'party', 'service_type']
 
 
-class RecordUpdateSerializer(serializers.ModelSerializer):
-    rate = serializers.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        min_value=0,
-        required=False
-    )
-    discount = serializers.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        min_value=0,
-        required=False
-    )
-    pcs = serializers.IntegerField(
-        min_value=1,
-        required=False
-    )
-
-    reason = serializers.CharField(
-        max_length=255,
-        required=False,
-        write_only=True)
-
-    class Meta:
-        model = Record
-        fields = ['rate', 'pcs', 'discount', 'reason']
+class BaseRecordSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         rate = attrs.get("rate")
@@ -115,8 +122,27 @@ class RecordUpdateSerializer(serializers.ModelSerializer):
 
         return attrs
 
+    def create(self, validated_data):
+        rate_mode = validated_data.pop('rate_mode')
 
-class RecordSerializer(serializers.ModelSerializer):
+        if rate_mode == 'system':
+            work_rate = Work_Rate.objects.filter(
+                party=validated_data['party'],
+                service_type=validated_data['service_type']
+            ).first()
+
+            if not work_rate:
+                raise serializers.ValidationError(
+                    {'rate': "This party dose't have a rate taied to this service"}
+                )
+
+            if work_rate.rate > 0:
+                validated_data['rate'] = work_rate.rate
+
+        return super().create(validated_data)
+
+
+class RecordSerializer(BaseRecordSerializer):
     amount = serializers.DecimalField(
         read_only=True,
         max_digits=10,
@@ -156,7 +182,7 @@ class RecordSerializer(serializers.ModelSerializer):
         read_only_fields = ['paid_amount']
 
 
-class RecordCreateSerializer(serializers.ModelSerializer):
+class RecordCreateSerializer(BaseRecordSerializer):
     rate_mode = serializers.ChoiceField(
         choices=['system', 'manual'],
         write_only=True
@@ -195,41 +221,51 @@ class RecordCreateSerializer(serializers.ModelSerializer):
             'party__address'
         ]
 
-    def create(self, validated_data):
-        rate_mode = validated_data.pop('rate_mode')
 
-        if rate_mode == 'system':
-            work_rate = Work_Rate.objects.filter(
-                party=validated_data['party'],
-                service_type=validated_data['service_type']
-            ).first()
+class RecordUpdateSerializer(BaseRecordSerializer):
+    rate = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=0,
+        required=False
+    )
+    discount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=0,
+        required=False
+    )
+    pcs = serializers.IntegerField(
+        min_value=1,
+        required=False
+    )
 
-            if not work_rate:
-                raise serializers.ValidationError(
-                    {'rate': "This party dose't have a rate taied to this service"}
-                )
+    reason = serializers.CharField(
+        max_length=255,
+        required=False,
+        write_only=True)
 
-            if work_rate.rate > 0:
-                validated_data['rate'] = work_rate.rate
-
-        return super().create(validated_data)
-
-    def validate(self, attrs):
-        rate = attrs.get("rate")
-        pcs = attrs.get("pcs")
-        discount = attrs.get("discount")
-
-        if discount is not None and rate is not None and pcs is not None:
-            max_discount = rate * pcs
-            if discount > max_discount:
-                raise serializers.ValidationError({
-                    "discount": f"Discount cannot exceed {max_discount}"
-                })
-
-        return attrs
+    class Meta:
+        model = Record
+        fields = ['rate', 'pcs', 'discount', 'reason']
 
 
-class PaymentSerializer(serializers.ModelSerializer):
+class BasePaymentSerializer(serializers.ModelSerializer):
+    def validate_payment_date(self, value):
+        delta = localdate() - value
+
+        if delta < timedelta(days=0):
+            raise serializers.ValidationError(
+                "Payment date cannot be in the future."
+            )
+        if delta > timedelta(days=7):
+            raise serializers.ValidationError(
+                "Cannot create payments older than 7 days."
+            )
+        return value
+
+
+class PaymentSerializer(BasePaymentSerializer):
     amount = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -260,21 +296,8 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = ['id', 'party', 'party__logo', 'party__first_name',
                   'party__last_name', 'party__address', 'amount', 'payment_date']
 
-    def validate_payment_date(self, value):
-        delta = localdate() - value
 
-        if delta < timedelta(days=0):
-            raise serializers.ValidationError(
-                "Payment date cannot be in the future."
-            )
-        if delta > timedelta(days=7):
-            raise serializers.ValidationError(
-                "Cannot create payments older than 7 days."
-            )
-        return value
-
-
-class PaymentUpdateSerializer(serializers.ModelSerializer):
+class PaymentUpdateSerializer(BasePaymentSerializer):
     reason = serializers.CharField(
         max_length=255,
         required=False,
@@ -293,25 +316,12 @@ class PaymentUpdateSerializer(serializers.ModelSerializer):
         model = Payment
         fields = ['id', 'amount', 'payment_date', 'reason']
 
-    def validate_payment_date(self, value):
-        delta = localdate() - value
-
-        if delta < timedelta(days=0):
-            raise serializers.ValidationError(
-                "Payment date cannot be in the future."
-            )
-        if delta > timedelta(days=7):
-            raise serializers.ValidationError(
-                "Cannot update payments older than 7 days."
-            )
-        return value
-
 
 class AdvanceLedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdvanceLedger
         fields = ['id', 'party__logo', 'party__first_name', 'party__last_name', 'payment__payment_date',
-                  'payment__amount', 'record__record_date', 'record__pcs', 'record__service_type__type__of_work'
+                  'payment__amount', 'record__record_date', 'record__pcs', 'record__service_type__type__of_work',
                   'amount', 'direction', 'created_at']
 
 
@@ -322,7 +332,47 @@ class AuditLogSerializer(serializers.ModelSerializer):
                   'before', 'after', 'reason', 'created_at', 'party__first_name', 'party__last_name']
 
 
-class PaymentRequestSerializer(serializers.ModelSerializer):
+class BasePaymentRequestSerilizer(serializers.ModelSerializer):
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        user = request.user
+        records = attrs.get('record', [])
+
+        for record in records:
+            if record.party.assigned_to != user:
+                raise serializers.ValidationError("Invalid record.")
+
+            if record.remaining_amount <= 0:
+                raise serializers.ValidationError("Record is already paid.")
+
+            if Payment_Request.objects.filter(record=record, status='P').exists():
+                raise serializers.ValidationError(
+                    "Record is already requested."
+                )
+
+        return attrs
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._apply_record_filter()
+
+    def _apply_record_filter(self):
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return
+
+        user = request.user
+
+        if user.parent:
+            record_filter = {'party__assigned_to': user}
+        else:
+            record_filter = {'party__user': user}
+
+        self.fields['record'].queryset = Record.objects.filter(**record_filter)
+
+
+class PaymentRequestSerializer(BasePaymentRequestSerilizer):
 
     class Meta:
         model = Payment_Request
@@ -331,48 +381,9 @@ class PaymentRequestSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_by',
                             'created_at', 'status', 'requested_amount', 'id']
 
-    def validate(self, data):
-        user = self.context['request'].user
-        records = data['record']
 
-        if user.parent:
-            raise serializers.ValidationError(
-                "Only employees can create requests.")
+class PaymentRequestCreateSerializer(BasePaymentRequestSerilizer):
 
-        partys = set()
-        for record in records:
-
-            if record.party.assigned_to != user:
-                raise serializers.ValidationError("Invalid record.")
-
-            if record.remaining_amount == 0:
-                raise serializers.ValidationError('Record is already paid.')
-
-            if Payment_Request.objects.filter(record=record, status='p').exists():
-                raise serializers.ValidationError(
-                    'Record is already requested.')
-
-            partys.add(record.party.id)
-            
-        return data
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._apply_record_filter()
-
-    def _apply_record_filter(self):
-        request = self.context.get('request')
-
-        if not request or not hasattr(request, 'user'):
-            return
-
-        user = request.user
-
-        if user.parent:
-            record_filter = {'party__assigned_to': user}
-
-        else:
-            record_filter = {'party__user': user}
-
-        self.fields['record'].queryset = Record.objects.filter(
-            **record_filter)
-
+    class Meta:
+        model = Payment_Request
+        fields = ['record']
