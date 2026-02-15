@@ -229,3 +229,6 @@ class Payment_Request(models.Model):
     rejected_reason = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=1, choices=[(
         "P", "PENDING"), ("A", "APPROVED"), ("R", "REJECTED")], default='P')
+
+    class Meta:
+        ordering = ['-created_at','-pk'] 

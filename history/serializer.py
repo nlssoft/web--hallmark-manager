@@ -347,23 +347,39 @@ class BasePaymentRequestSerilizer(serializers.ModelSerializer):
             if record.remaining_amount <= 0:
                 raise serializers.ValidationError("Record is already paid.")
 
-            if Payment_Request.objects.filter(record=record, status='P').exists():
-                raise serializers.ValidationError(
-                    "Record is already requested."
-                )
+            pending_qs = Payment_Request.objects.filter(record=record, status='P')
 
-            if Payment_Request.objects.filter(record=record, status='A').exists():
-                raise serializers.ValidationError(
-                    "Record is already paid."
-                )
+            if self.instance:
+                pending_qs = pending_qs.exclude(pk=self.instance.pk)
+
+            if pending_qs.exists():
+                raise serializers.ValidationError("Record is already requested.")
 
         return attrs
+
+
+class PaymentRequestSerializer(BasePaymentRequestSerilizer):
+
+    class Meta:
+        model = Payment_Request
+        fields = ['id', 'created_by', 'record',
+                  'requested_amount', 'created_at', 'status']
+        read_only_fields = ['created_by',
+                            'created_at', 'status', 'requested_amount', 'id']
+    
+    
+class PaymentRequestCreateSerializer(BasePaymentRequestSerilizer):
+
+    class Meta:
+        model = Payment_Request
+        fields = ['record']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._apply_record_filter()
 
     def _apply_record_filter(self):
+
         request = self.context.get('request')
         if not request or not hasattr(request, 'user'):
             return
@@ -380,26 +396,66 @@ class BasePaymentRequestSerilizer(serializers.ModelSerializer):
                                        F('discount') - F('paid_amount'),
                                        output_field=DecimalField())
         ).filter(not_paid__gt=0)
+        
+
+        owner = user.parent if user.parent else user
+
+        pending_ids = Payment_Request.objects.filter(
+            status='P',
+            party__user=owner
+        ).values_list('record__id', flat=True)
+
 
         filtered_qs = base_qs.exclude(
-            payment_request__status__in=["A", "P"]
+            id__in = pending_ids
         ).distinct()
 
-        self.fields['record'].queryset = filtered_qs
+        self.fields['record'].child_relation.queryset = filtered_qs
 
 
-class PaymentRequestSerializer(BasePaymentRequestSerilizer):
+class PaymentRequestUpdateSerializer(BasePaymentRequestSerilizer):
 
-    class Meta:
-        model = Payment_Request
-        fields = ['id', 'created_by', 'record',
-                  'requested_amount', 'created_at', 'status']
-        read_only_fields = ['created_by',
-                            'created_at', 'status', 'requested_amount', 'id']
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance and hasattr(self.fields['record'], 'child_relation'):
+            self.fields['record'].child_relation.queryset = self.instance.record.all()
 
 
-class PaymentRequestCreateSerializer(BasePaymentRequestSerilizer):
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
 
-    class Meta:
-        model = Payment_Request
-        fields = ['record']
+        if self.instance is not None and 'record' in attrs:
+            current_ids = set(self.instance.record.values_list('id', flat=True))
+            incoming_ids = {r.id for r in attrs['record']}
+
+            if not incoming_ids.issubset(current_ids):
+                raise serializers.ValidationError({
+                    "record": "You can only remove records from this request, not add new ones."
+                })
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        record = validated_data.pop('record', None)
+        instance = super().update(instance, validated_data)
+
+        if record is not None:
+            instance.record.set(record)
+            instance.requested_amount = sum(r.remaining_amount for r in record)
+            instance.save(update_fields=['requested_amount'])
+        
+        return instance
+
+
+class PaymentRequestRejectSerializer(serializers.Serializer):
+    reason = serializers.CharField(required=False, allow_blank=True, max_length=500)
+
+
+class PaymentRequestApproveSerializer(serializers.Serializer):
+    pass
+
+
+
+
+

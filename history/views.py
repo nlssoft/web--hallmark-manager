@@ -552,6 +552,24 @@ class PaymentRequestviewset(ModelViewSet):
             return Payment_Request.objects.filter(created_by=self.request.user).exclude(status='A')
         return Payment_Request.objects.filter(created_by__parent=self.request.user)
 
+    def get_serializer_class(self):
+
+        if self.action == 'create':
+            return PaymentRequestCreateSerializer
+        
+        elif self.action in ['update', 'partial_update']:
+            return PaymentRequestUpdateSerializer
+
+        elif self.action == 'reject':
+            return PaymentRequestRejectSerializer
+        
+        elif self.action == 'approve':
+            return PaymentRequestApproveSerializer
+        
+        else:
+            return PaymentRequestSerializer
+
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -590,22 +608,23 @@ class PaymentRequestviewset(ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        pr = self.get_object()
 
         if request.user.parent:
             raise PermissionDenied('Only Admin can approve request.')
 
-        if pr.party.user != request.user:
-            raise PermissionDenied('Not your record.')
-
-        if pr.status != 'P':
-            return Response(
-                {"detail": "Already processed."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
         with transaction.atomic():
-            pr = Payment_Request.objects.select_for_update().get(pk=pr.pk)
+            pr = Payment_Request.objects.select_for_update().get(pk=pk)
+
+            if pr.party.user != request.user:
+                raise PermissionDenied('Invalid record.')
+
+            if pr.status == 'P':
+                return Response(
+                    {"detail": "Already processed."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
 
             payment = Payment.objects.create(
                 party=pr.party,
@@ -639,7 +658,11 @@ class PaymentRequestviewset(ModelViewSet):
             )
 
         pr.status = "R"
-        pr.rejected_reason = request.data.get("reason", "")
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        pr.rejected_reason = serializer.validated_data.get("reason", "")
+
         pr.save()
 
         return Response({"status": "rejected"})
