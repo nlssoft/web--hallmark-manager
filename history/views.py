@@ -607,10 +607,12 @@ class PaymentRequestviewset(ModelViewSet):
         with transaction.atomic():
             pr = Payment_Request.objects.select_for_update().get(pk=pr.pk)
 
-            Payment.objects.create(
+            payment = Payment.objects.create(
                 party=pr.party,
                 amount=pr.requested_amount
             )
+
+            PaymentService.allocate_payment(payment)
 
             pr.status = 'A'
             pr.save()

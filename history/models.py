@@ -31,18 +31,14 @@ class Party(models.Model):
 
     @property
     def due(self):
-        total_work = self.record_set.aggregate(
+        current = self.record_set.aggregate(
             total=Sum(ExpressionWrapper(
-                (F('rate') * F('pcs')) - F('discount'),
+                (F('rate') * F('pcs')) - F('discount') - F('paid_amount'),
                 output_field=DecimalField()
             )
             )
         )['total'] or Decimal('0.00')
 
-        total_paid = (self.payment_set.aggregate(
-            paid=Sum('amount'))
-        )['paid'] or Decimal('0.00')
-        current = total_work - total_paid
         if current < 0:
             return Decimal('0.00')
         return current

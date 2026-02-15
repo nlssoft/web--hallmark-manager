@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.utils.timezone import timedelta, localdate
 from .models import *
 from django.contrib.auth import get_user_model
+from django.db.models import F, ExpressionWrapper, DecimalField, Exists, OuterRef
 
 
 class PartySerializer(serializers.ModelSerializer):
@@ -351,6 +352,11 @@ class BasePaymentRequestSerilizer(serializers.ModelSerializer):
                     "Record is already requested."
                 )
 
+            if Payment_Request.objects.filter(record=record, status='A').exists():
+                raise serializers.ValidationError(
+                    "Record is already paid."
+                )
+
         return attrs
 
     def __init__(self, *args, **kwargs):
@@ -365,11 +371,21 @@ class BasePaymentRequestSerilizer(serializers.ModelSerializer):
         user = request.user
 
         if user.parent:
-            record_filter = {'party__assigned_to': user}
+            base_qs = Record.objects.filter(party__assigned_to=user)
         else:
-            record_filter = {'party__user': user}
+            base_qs = Record.objects.filter(party__user=user)
 
-        self.fields['record'].queryset = Record.objects.filter(**record_filter)
+        base_qs = base_qs.annotate(
+            not_paid=ExpressionWrapper((F('rate') * F('pcs')) -
+                                       F('discount') - F('paid_amount'),
+                                       output_field=DecimalField())
+        ).filter(not_paid__gt=0)
+
+        filtered_qs = base_qs.exclude(
+            payment_request__status__in=["A", "P"]
+        ).distinct()
+
+        self.fields['record'].queryset = filtered_qs
 
 
 class PaymentRequestSerializer(BasePaymentRequestSerilizer):
