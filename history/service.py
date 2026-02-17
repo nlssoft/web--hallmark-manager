@@ -215,6 +215,36 @@ class RecordService:
         if delta > 0:
             record.reverse_payment(delta)
 
+    @staticmethod
+    def cleanup_pending_requests_for_deleted_record(record):
+        pending_requests = Payment_Request.objects.filter(
+            status='P',
+            record=record
+        ).distinct()
+
+        for pr in pending_requests:
+            pr.record.remove(record)
+
+            if not pr.record.exists():
+                pr.delete()
+            else:
+                pr.requested_amount = sum(
+                    r.remaining_amount for r in pr.record.all())
+                pr.save(update_fields=['requested_amount'])
+
+    @staticmethod
+    def sync_pending_request_amounts(record):
+        pending_requests = Payment_Request.objects.filter(
+            status='P',
+            record=record
+        ).distinct()
+
+        for pr in pending_requests:
+            pr.requested_amount = sum(
+                r.remaining_amount for r in pr.record.all()
+            )
+            pr.save(update_fields=['requested_amount'])
+
 
 class PaymentService:
 
@@ -287,9 +317,23 @@ class PaymentService:
             ledger.delete()
 
     @staticmethod
+    def sync_pending_request_amounts_for_party(party):
+        pending_requests = Payment_Request.objects.filter(
+            status='P',
+            party=party
+        ).distinct()
+
+        for pr in pending_requests:
+            pr.requested_amount = sum(
+                r.remaining_amount for r in pr.record.all()
+            )
+            pr.save(update_fields=['requested_amount'])
+
+    @staticmethod
     def create_payment(serializer):
         payment = serializer.save()
         PaymentService.allocate_payment(payment)
+        PaymentService.sync_pending_request_amounts_for_party(payment.party)
         return payment
 
     @staticmethod
@@ -298,4 +342,5 @@ class PaymentService:
         PaymentService.rollback_payment(payment)
         payment = serializer.save()
         PaymentService.allocate_payment(payment)
+        PaymentService.sync_pending_request_amounts_for_party(payment.party)
         return payment

@@ -148,6 +148,7 @@ class RecordViewSet(ModelViewSet):
 
         with transaction.atomic():
             RecordService.rollback(record)
+            RecordService.cleanup_pending_requests_for_deleted_record(record)
 
             AuditLog.objects.create(
                 user=request.user,
@@ -179,7 +180,7 @@ class RecordViewSet(ModelViewSet):
             RecordService.adjust_after_update(
                 record, serializer.validated_data)
             record = serializer.save()
-
+            RecordService.sync_pending_request_amounts(record)
             after_state = json.loads(
                 json.dumps(RecordSerializer(record).data,
                            cls=DjangoJSONEncoder)
@@ -242,6 +243,8 @@ class PaymentViewSet(ModelViewSet):
 
         with transaction.atomic():
             PaymentService.rollback_payment(payment)
+            PaymentService.sync_pending_request_amounts_for_party(
+                payment.party)
 
             AuditLog.objects.create(
                 user=request.user,
@@ -427,7 +430,7 @@ class SummaryView(APIView):
 
         elif data_type == 'payment':
             if user.parent:
-                qs = Record.objects.filter(party__assigned_to=user)
+                qs = Payment.objects.filter(party__assigned_to=user)
             else:
                 qs = Payment.objects.filter(party__user=user)
             qs = self.spine(qs, party, party_id,
@@ -460,7 +463,7 @@ class SummaryView(APIView):
 
         elif data_type == 'advance_ledger':
             if user.parent:
-                qs = Record.objects.filter(party__assigned_to=user)
+                qs = AdvanceLedger.objects.filter(party__assigned_to=user)
             else:
                 qs = AdvanceLedger.objects.filter(party__user=user)
 
@@ -549,26 +552,32 @@ class PaymentRequestviewset(ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.parent:
-            return Payment_Request.objects.filter(created_by=self.request.user).exclude(status='A')
-        return Payment_Request.objects.filter(created_by__parent=self.request.user)
+            return Payment_Request.objects.filter(
+                created_by=self.request.user).select_related(
+                    'party', 'created_by').prefetch_related(
+                        'record').exclude(
+                            status='A')
+        return Payment_Request.objects.filter(
+            created_by__parent=self.request.user).select_related(
+                'party', 'created_by').prefetch_related(
+                    'record')
 
     def get_serializer_class(self):
 
         if self.action == 'create':
             return PaymentRequestCreateSerializer
-        
+
         elif self.action in ['update', 'partial_update']:
             return PaymentRequestUpdateSerializer
 
         elif self.action == 'reject':
             return PaymentRequestRejectSerializer
-        
+
         elif self.action == 'approve':
             return PaymentRequestApproveSerializer
-        
+
         else:
             return PaymentRequestSerializer
-
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -612,19 +621,17 @@ class PaymentRequestviewset(ModelViewSet):
         if request.user.parent:
             raise PermissionDenied('Only Admin can approve request.')
 
-
         with transaction.atomic():
             pr = Payment_Request.objects.select_for_update().get(pk=pk)
 
             if pr.party.user != request.user:
                 raise PermissionDenied('Invalid record.')
 
-            if pr.status == 'P':
+            if pr.status != 'P':
                 return Response(
                     {"detail": "Already processed."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-
 
             payment = Payment.objects.create(
                 party=pr.party,
@@ -632,6 +639,7 @@ class PaymentRequestviewset(ModelViewSet):
             )
 
             PaymentService.allocate_payment(payment)
+            PaymentService.sync_pending_request_amounts_for_party(pr.party)
 
             pr.status = 'A'
             pr.save()

@@ -347,13 +347,15 @@ class BasePaymentRequestSerilizer(serializers.ModelSerializer):
             if record.remaining_amount <= 0:
                 raise serializers.ValidationError("Record is already paid.")
 
-            pending_qs = Payment_Request.objects.filter(record=record, status='P')
+            pending_qs = Payment_Request.objects.filter(
+                record=record, status='P')
 
             if self.instance:
                 pending_qs = pending_qs.exclude(pk=self.instance.pk)
 
             if pending_qs.exists():
-                raise serializers.ValidationError("Record is already requested.")
+                raise serializers.ValidationError(
+                    "Record is already requested.")
 
         return attrs
 
@@ -364,10 +366,9 @@ class PaymentRequestSerializer(BasePaymentRequestSerilizer):
         model = Payment_Request
         fields = ['id', 'created_by', 'record',
                   'requested_amount', 'created_at', 'status']
-        read_only_fields = ['created_by',
-                            'created_at', 'status', 'requested_amount', 'id']
-    
-    
+        read_only_fields = fields
+
+
 class PaymentRequestCreateSerializer(BasePaymentRequestSerilizer):
 
     class Meta:
@@ -396,7 +397,6 @@ class PaymentRequestCreateSerializer(BasePaymentRequestSerilizer):
                                        F('discount') - F('paid_amount'),
                                        output_field=DecimalField())
         ).filter(not_paid__gt=0)
-        
 
         owner = user.parent if user.parent else user
 
@@ -405,9 +405,8 @@ class PaymentRequestCreateSerializer(BasePaymentRequestSerilizer):
             party__user=owner
         ).values_list('record__id', flat=True)
 
-
         filtered_qs = base_qs.exclude(
-            id__in = pending_ids
+            id__in=pending_ids
         ).distinct()
 
         self.fields['record'].child_relation.queryset = filtered_qs
@@ -415,18 +414,25 @@ class PaymentRequestCreateSerializer(BasePaymentRequestSerilizer):
 
 class PaymentRequestUpdateSerializer(BasePaymentRequestSerilizer):
 
+    class Meta:
+        model = Payment_Request
+        fields = ['id', 'created_by', 'record',
+                  'requested_amount', 'created_at', 'status']
+        read_only_fields = ['id', 'created_by', 'requested_amount',
+                            'created_at', 'status']
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         if self.instance and hasattr(self.fields['record'], 'child_relation'):
             self.fields['record'].child_relation.queryset = self.instance.record.all()
 
-
     def validate(self, attrs):
         attrs = super().validate(attrs)
 
         if self.instance is not None and 'record' in attrs:
-            current_ids = set(self.instance.record.values_list('id', flat=True))
+            current_ids = set(
+                self.instance.record.values_list('id', flat=True))
             incoming_ids = {r.id for r in attrs['record']}
 
             if not incoming_ids.issubset(current_ids):
@@ -444,18 +450,14 @@ class PaymentRequestUpdateSerializer(BasePaymentRequestSerilizer):
             instance.record.set(record)
             instance.requested_amount = sum(r.remaining_amount for r in record)
             instance.save(update_fields=['requested_amount'])
-        
+
         return instance
 
 
 class PaymentRequestRejectSerializer(serializers.Serializer):
-    reason = serializers.CharField(required=False, allow_blank=True, max_length=500)
+    reason = serializers.CharField(
+        required=False, allow_blank=True, max_length=500)
 
 
 class PaymentRequestApproveSerializer(serializers.Serializer):
     pass
-
-
-
-
-

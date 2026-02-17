@@ -231,4 +231,4 @@ class Payment_Request(models.Model):
         "P", "PENDING"), ("A", "APPROVED"), ("R", "REJECTED")], default='P')
 
     class Meta:
-        ordering = ['-created_at','-pk'] 
+        ordering = ['-pk']

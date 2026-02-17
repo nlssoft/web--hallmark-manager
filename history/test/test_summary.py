@@ -251,15 +251,15 @@ class TestAdvanceLedgerSummary:
 
         response_in = get_summary({
             'type': 'advance_ledger',
-            'date_from': '2025-12-20',
-            'date_to': '2026-02-15',
+            'date_from': '2000-01-01',
+            'date_to': '2099-12-31',
             'direction': "IN"
         })
 
         response_out = get_summary({
             'type': 'advance_ledger',
-            'date_from': '2025-12-20',
-            'date_to': '2026-02-15',
+            'date_from': '2000-01-01',
+            'date_to': '2099-12-31',
             'direction': "OUT"
         })
 
