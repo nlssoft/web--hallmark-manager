@@ -17,3 +17,10 @@ env/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# pytest
+.pytest_cache/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
