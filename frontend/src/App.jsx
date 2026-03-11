@@ -1,54 +1,85 @@
 import { useState } from "react";
 
-export function Square({ value, fun }) {
+function Square({ value, fun }) {
   return (
-    <button onClick={fun} className="square">
+    <button className="square" onClick={fun}>
       {value}
     </button>
   );
 }
 
-export default function Board() {
-  const [square, setSquare] = useState(Array(9).fill(null));
-  let [isNext, setIsNext] = useState(true);
+function Board({ squares, player, onPlay }) {
+  const winner = calculatWinner(squares);
 
   function handelClick(i) {
-    let newSquare = square.slice();
-    if (isNext) {
-      newSquare[i] = "X";
-    } else {
-      newSquare[i] = "O";
+    if (squares[i] || winner) {
+      return;
     }
 
-    setSquare(newSquare);
-    setIsNext(!isNext);
+    const cloneSquares = squares.slice();
+
+    player ? (cloneSquares[i] = "X") : (cloneSquares[i] = "O");
+
+    onPlay(cloneSquares);
   }
 
   return (
     <>
-      <div className="board-row">
-        <Square value={square[1]} fun={() => handelClick(1)} />
-        <Square value={square[2]} fun={() => handelClick(2)} />
-        <Square value={square[3]} fun={() => handelClick(3)} />
+      <div className="status">
+        {winner
+          ? "the winner is" + winner
+          : "next player" + (player ? "X" : "O")}
       </div>
 
       <div className="board-row">
-        <Square value={square[4]} fun={() => handelClick(4)} />
-        <Square value={square[5]} fun={() => handelClick(5)} />
-        <Square value={square[6]} fun={() => handelClick(6)} />
+        <Square value={squares[0]} fun={() => handelClick(0)} />
+        <Square value={squares[1]} fun={() => handelClick(1)} />
+        <Square value={squares[2]} fun={() => handelClick(2)} />
       </div>
 
       <div className="board-row">
-        <Square value={square[7]} fun={() => handelClick(7)} />
-        <Square value={square[8]} fun={() => handelClick(8)} />
-        <Square value={square[9]} fun={() => handelClick(9)} />
+        <Square value={squares[3]} fun={() => handelClick(3)} />
+        <Square value={squares[4]} fun={() => handelClick(4)} />
+        <Square value={squares[5]} fun={() => handelClick(5)} />
+      </div>
+
+      <div className="board-row">
+        <Square value={squares[6]} fun={() => handelClick(6)} />
+        <Square value={squares[7]} fun={() => handelClick(7)} />
+        <Square value={squares[8]} fun={() => handelClick(8)} />
       </div>
     </>
   );
 }
 
-export function calculateWinner(square) {
-  winingLines = [
+export default function Game() {
+  const [history, setHistory] = useState([Array(9).fill(null)]);
+  const [isNext, setIsNext] = useState(true);
+  const currentBoard = history[history.length - 1];
+
+  function handelPlay(cloneSquares) {
+    setHistory([...history, cloneSquares]);
+    setIsNext(!isNext);
+  }
+
+  function jumpTo(nextSquare) {}
+
+  moves = history.map(() => {});
+
+  return (
+    <div className="game">
+      <div className="game-board">
+        <Board squares={currentBoard} player={isNext} onPlay={handelPlay} />
+      </div>
+      <div className="game-info">
+        <ol>{/*TODO*/}</ol>
+      </div>
+    </div>
+  );
+}
+
+function calculatWinner(squares) {
+  const lines = [
     [0, 1, 2],
     [3, 4, 5],
     [6, 7, 8],
@@ -58,4 +89,12 @@ export function calculateWinner(square) {
     [0, 4, 8],
     [2, 4, 6],
   ];
+
+  for (let i = 0; i < lines.length; i++) {
+    const [a, b, c] = lines[i];
+    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+      return squares[a];
+    }
+  }
+  return null;
 }
