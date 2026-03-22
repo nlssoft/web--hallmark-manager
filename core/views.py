@@ -8,6 +8,11 @@ from django.core.exceptions import PermissionDenied
 from .serializers import *
 from rest_framework import status
 
+from django.contrib.auth import authenticate
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
+
 
 class UserProfileViewSet(ViewSet):
     """
@@ -55,3 +60,80 @@ class EmployeeCreateView(ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    user = authenticate(username=username, password=password)
+
+    if user is None:
+        return Response({'error': 'invalid credentials'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    refresh = RefreshToken.for_user(user)
+    access_token = str(refresh.access_token)
+    refresh_token = str(refresh)
+
+    response = Response({'message': 'Login successful'})
+
+    response.set_cookie(
+        key='access',
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite='Lax'
+    )
+
+    response.set_cookie(
+        key='refresh',
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite='Lax'
+    )
+
+    return response
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def refresh_view(request):
+    refresh_token = request.COOKIES.get('refresh')
+
+    if not refresh_token:
+        return Response({'error': 'No refresh token'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        refresh = RefreshToken(refresh_token)
+        access_token = str(refresh.access_token)
+
+    except Exception:
+        return Response({'error': 'Invalid refresh token'},
+                        status=status.HTTP_401_UNAUTHORIZED)
+
+    response = Response({'message': 'token refreshed'})
+
+    response.set_cookie(
+        key='access',
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite='Lax'
+    )
+
+    return response
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    response = Response({'message': 'Logged out'})
+    response.delete_cookie('access')
+    response.delete_cookie('refresh')
+    return response
