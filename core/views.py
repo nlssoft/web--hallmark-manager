@@ -12,7 +12,9 @@ from django.contrib.auth import authenticate
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from django.middleware.csrf import get_token
+from .models import User
+from history.pagination import NormalPagination
 
 class UserProfileViewSet(ViewSet):
     """
@@ -43,6 +45,7 @@ class UserProfileViewSet(ViewSet):
 class EmployeeCreateView(ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeCreateSerializer
+    pagination_class= NormalPagination
 
     def get_queryset(self):
         if self.request.user.parent:
@@ -111,7 +114,13 @@ def refresh_view(request):
 
     try:
         refresh = RefreshToken(refresh_token)
-        access_token = str(refresh.access_token)
+        refresh.blacklist()
+        user_id = refresh['user_id']
+        user = User.objects.get(id=user_id)
+        new_refresh = RefreshToken.for_user(user) 
+
+        access_token = str(new_refresh.access_token)
+        new_refresh_token = str(new_refresh) 
 
     except Exception:
         return Response({'error': 'Invalid refresh token'},
@@ -127,13 +136,41 @@ def refresh_view(request):
         samesite='Lax'
     )
 
+    response.set_cookie(
+        key='refresh',
+        value=new_refresh_token,
+        httponly=True,
+        secure=False,
+        samesite='Lax'
+    )
+
+
     return response
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def logout_view(request):
     response = Response({'message': 'Logged out'})
+    refresh_token = request.COOKIES.get('refresh')
+
+    if refresh_token:
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except Exception:
+            pass
+
+
     response.delete_cookie('access')
     response.delete_cookie('refresh')
+
     return response
+
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def csrf_view(request):
+    get_token(request)
+    return Response({'message' : 'csrf cookie set'})

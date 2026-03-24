@@ -1,16 +1,24 @@
 import { useState } from "react";
 import api from "../api/axios";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from '../context/AuthContext';
+
 
 function LoginPage() {
-  cosnt[(username, setUsername)] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const {setUser} = useAuth();
 
   async function handleSubmit(e) {
     e.preventDefault();
+
     try {
       await api.post("/auth/login/", { username, password });
-      alert("Login successful!");
+      const profile = await api.get('/auth/profile/me/');
+      setUser(profile.data);
+      navigate('/dashboard')
     } catch (err) {
       setError("Invalid username or password");
     }

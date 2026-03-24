@@ -11,5 +11,6 @@ urlpatterns = [
     path('login/', views.login_view),
     path('refresh/', views.refresh_view),
     path('logout/', views.logout_view),
+    path('csrf/', views.csrf_view),
 
 ] + router.urls
