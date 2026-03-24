@@ -4,6 +4,7 @@ import Dashboard from "./pages/DashboardPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import PartiesPage from "./pages/PartiesPage.jsx";
+import PartyDetailPage from "./pages/PartyDetailPage.jsx";
 
 function App() {
   return (
@@ -22,6 +23,14 @@ function App() {
         element={
           <ProtectedRoute>
             <PartiesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/parties/:id"
+        element={
+          <ProtectedRoute>
+            <PartyDetailPage />
           </ProtectedRoute>
         }
       />

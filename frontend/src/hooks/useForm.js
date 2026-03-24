@@ -10,8 +10,9 @@ export function useForm(initialState) {
     }));
   }
 
-  function resetForm() {
-    setFormData(initialState);
+  function resetForm(newState = initialState) {
+    setFormData(newState);
   }
+
   return { formData, resetForm, handleFormChange };
 }
