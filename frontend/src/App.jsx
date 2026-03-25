@@ -5,7 +5,7 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import PartiesPage from "./pages/PartiesPage.jsx";
 import PartyDetailPage from "./pages/PartyDetailPage.jsx";
-
+import ServiceTypePage from "./pages/ServiceTypePage.jsx";
 function App() {
   return (
     <Routes>
@@ -31,6 +31,14 @@ function App() {
         element={
           <ProtectedRoute>
             <PartyDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/service-Type/"
+        element={
+          <ProtectedRoute>
+            <ServiceTypePage />
           </ProtectedRoute>
         }
       />

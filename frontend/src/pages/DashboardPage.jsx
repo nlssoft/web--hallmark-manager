@@ -16,13 +16,13 @@ const cards = [
 
 function DashboardPage() {
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-gray-100">
       <Navbar />
-      <div className="max-w-5xl mx-auto px-6 py-10 pb-50">
-        <h1 className="text-slate-100 text-2xl font-semibold mb-8">
-          Dashboard
-        </h1>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+
+      <div className="max-w-5xl mx-auto px-6 py-10">
+        <h1 className="text-gray-800 text-2xl font-semibold mb-8">Dashboard</h1>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {cards.map((card) => (
             <DashboardCard
               key={card.title}
