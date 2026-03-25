@@ -5,7 +5,7 @@ from . import views
 router = DefaultRouter()
 router.register('profile', views.UserProfileViewSet, basename='profile')
 
-router.register('employee', views.EmployeeCreateView, basename='employee')
+router.register('employee', views.EmployeeCreateViewSet, basename='employee')
 
 urlpatterns = [
     path('login/', views.login_view),

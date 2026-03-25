@@ -16,6 +16,7 @@ from django.middleware.csrf import get_token
 from .models import User
 from history.pagination import NormalPagination
 
+
 class UserProfileViewSet(ViewSet):
     """
     ViewSet for current user profile management
@@ -42,7 +43,7 @@ class UserProfileViewSet(ViewSet):
         return Response(UserSerializer(request.user).data)
 
 
-class EmployeeCreateView(ModelViewSet):
+class EmployeeCreateViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeCreateSerializer
     pagination_class= NormalPagination
@@ -59,10 +60,17 @@ class EmployeeCreateView(ModelViewSet):
         serializer.save(parent=self.request.user)
 
     def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
-
+        if self.request.user.parent:
+            raise PermissionDenied('Only Admin can create employee.')
+        user= self.get_object()
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+        
     def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        if self.request.user.parent:
+            raise PermissionDenied('Only Admin can create employee.')
+        user =self.get_object()
+        
 
 
 @api_view(['POST'])

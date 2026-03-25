@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getServices } from "../api/serviceType";
 import Navbar from "../components/Navbar";
+import GoBackButton from "../components/GoBackButton.jsx";
 
 function ServiceTypePage() {
   //varibles
@@ -64,14 +65,7 @@ function ServiceTypePage() {
             </div>
           ))}
         </div>
-        <div className="max-w-2xl mx-auto mt-6 flex justify-center">
-          <button
-            onClick={() => navigate("/dashboard/")}
-            className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline transition"
-          >
-            ← Go Back
-          </button>
-        </div>
+        <GoBackButton to="/dashboard/" />
       </div>
     </div>
   );

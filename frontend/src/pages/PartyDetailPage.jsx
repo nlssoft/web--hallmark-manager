@@ -5,6 +5,7 @@ import { useForm } from "../hooks/useForm.js";
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 import EditableField from "../components/EditableField.jsx";
+import GoBackButton from "../components/GoBackButton.jsx";
 
 function partyToForm(party) {
   return {
@@ -85,11 +86,28 @@ function PartyDetailPage() {
   }
 
   //Early returns
-  if (isLoading) return <div>Loading...</div>;
-  if (isError) return <div>Something went wrong.</div>;
+  if (isLoading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white px-6 py-4 rounded-lg shadow-sm flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-gray-700 text-sm">Loading...</span>
+        </div>
+      </div>
+    );
+
+  if (isError)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white px-6 py-4 rounded-lg shadow-sm text-center">
+          <p className="text-red-500 font-medium">Something went wrong</p>
+          <p className="text-gray-500 text-sm mt-1">Please try again later.</p>
+        </div>
+      </div>
+    );
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-gray-100">
       <Navbar />
       <div className="max-w-3xl mx-auto p-6 space-y-4">
         <EditableField
@@ -128,6 +146,7 @@ function PartyDetailPage() {
           isEditing={isEditing}
         />
         <EditableField
+          type={"textArea"}
           label="Address"
           name="address"
           value={isEditing ? formData.address : data.address}
@@ -182,6 +201,7 @@ function PartyDetailPage() {
           </div>
         )}
       </div>
+      <GoBackButton to="/parties/" />
     </div>
   );
 }
