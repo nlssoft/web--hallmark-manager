@@ -48,3 +48,12 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+
+class EmployeeUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name',
+                  'last_name', 'email', 'number', 'address']
+        read_only_fields = ['id', 'username']
+
+  

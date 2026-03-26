@@ -32,6 +32,10 @@ class UserProfileViewSet(ViewSet):
     @action(detail=False, methods=['put', 'patch'])
     def update_profile(self, request):
         """Update current user profile"""
+
+        if self.request.user.parent:
+            raise PermissionDenied('Only Admin can update employee.')
+        
         serializer = UserProfileUpdateSerializer(
             request.user,
             data=request.data,
@@ -43,7 +47,7 @@ class UserProfileViewSet(ViewSet):
         return Response(UserSerializer(request.user).data)
 
 
-class EmployeeCreateViewSet(ModelViewSet):
+class EmployeeCreateModelViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeCreateSerializer
     pagination_class= NormalPagination
@@ -53,6 +57,11 @@ class EmployeeCreateViewSet(ModelViewSet):
             return User.objects.none()
         return User.objects.filter(parent=self.request.user)
 
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return EmployeeCreateSerializer
+        return EmployeeUpdateSerializer
+    
     def perform_create(self, serializer):
         if self.request.user.parent:
             raise PermissionDenied('Only Admin can create employee.')
@@ -69,7 +78,11 @@ class EmployeeCreateViewSet(ModelViewSet):
     def update(self, request, *args, **kwargs):
         if self.request.user.parent:
             raise PermissionDenied('Only Admin can create employee.')
-        user =self.get_object()
+        user = self.get_object()
+        serializer =self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(self.get_serializer(user).data, status=status.HTTP_200_OK)
         
 
 
