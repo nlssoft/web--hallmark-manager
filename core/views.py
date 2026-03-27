@@ -70,14 +70,14 @@ class EmployeeCreateModelViewSet(ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         if self.request.user.parent:
-            raise PermissionDenied('Only Admin can create employee.')
+            raise PermissionDenied('Only Admin can delete employee.')
         user= self.get_object()
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
         
     def update(self, request, *args, **kwargs):
         if self.request.user.parent:
-            raise PermissionDenied('Only Admin can create employee.')
+            raise PermissionDenied('Only Admin can update employee.')
         user = self.get_object()
         serializer =self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)

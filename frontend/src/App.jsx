@@ -6,10 +6,16 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import PartiesPage from "./pages/PartiesPage.jsx";
 import PartyDetailPage from "./pages/PartyDetailPage.jsx";
 import ServiceTypePage from "./pages/ServiceTypePage.jsx";
+import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
+
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/reset-password/:uid/:token"
+        element={<ResetPasswordPage />}
+      />
       <Route
         path="/dashboard"
         element={
