@@ -142,6 +142,8 @@ REST_FRAMEWORK = {
 
 }
 
+FRONTEND_URL = env("FRONTEND_URL")
+
 DJOSER = {
     'SERIALIZERS': {
         'user_create': 'core.serializers.UserCreateSerializer',
@@ -150,7 +152,10 @@ DJOSER = {
     },
     'PASSWORD_RESET_CONFIRM_URL': 'reset-password/{uid}/{token}',
     'SEND_ACTIVATION_EMAIL': False,
-
+    
+    "EMAIL": {
+        "password_reset": "core.email.CustomPasswordResetEmail",
+    },
 }
 
 SIMPLE_JWT = {

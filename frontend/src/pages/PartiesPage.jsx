@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "../hooks/useForm";
-import { getEmployees } from "../api/employees";
+import { loadEmployees } from "../api/employees";
 
 import Navbar from "../components/Navbar";
 import PartyFiltersBar from "../components/PartyFiltersBar";
@@ -45,7 +45,7 @@ function PartiesPage() {
 
   const { data: employees } = useQuery({
     queryKey: ["employees"],
-    queryFn: () => getEmployees().then((res) => res.data.results),
+    queryFn: () => loadEmployees().then((res) => res.data.results),
   });
 
   const parties = data?.results ?? [];

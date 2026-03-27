@@ -41,6 +41,9 @@ function shouldSkipRefresh(url = "") {
     "/auth/refresh/",
     "/auth/logout/",
     "/auth/csrf/",
+    "/auth/profile/me/",
+    "/auth/users/reset_password/",
+    "/auth/users/reset_password_confirm/",
   ].some((path) => url.includes(path));
 }
 

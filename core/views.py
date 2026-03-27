@@ -47,14 +47,14 @@ class UserProfileViewSet(ViewSet):
         return Response(UserSerializer(request.user).data)
 
 
-class EmployeeCreateModelViewSet(ModelViewSet):
+class EmployeeModelViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = EmployeeCreateSerializer
     pagination_class= NormalPagination
 
     def get_queryset(self):
         if self.request.user.parent:
-            return User.objects.none()
+            raise PermissionDenied('Unauthorized access.')
         return User.objects.filter(parent=self.request.user)
 
     def get_serializer_class(self):

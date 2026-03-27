@@ -7,11 +7,14 @@ import PartiesPage from "./pages/PartiesPage.jsx";
 import PartyDetailPage from "./pages/PartyDetailPage.jsx";
 import ServiceTypePage from "./pages/ServiceTypePage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
+import SendEmailPage from "./pages/SendEmailPage.jsx";
+import SubUserPage from "./pages/SubUserPage.jsx";
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password/" element={<SendEmailPage />} />
       <Route
         path="/reset-password/:uid/:token"
         element={<ResetPasswordPage />}
@@ -45,6 +48,14 @@ function App() {
         element={
           <ProtectedRoute>
             <ServiceTypePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sub-user/"
+        element={
+          <ProtectedRoute>
+            <SubUserPage />
           </ProtectedRoute>
         }
       />
