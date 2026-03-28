@@ -9,6 +9,7 @@ import ServiceTypePage from "./pages/ServiceTypePage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import SendEmailPage from "./pages/SendEmailPage.jsx";
 import SubUserPage from "./pages/SubUserPage.jsx";
+import SubUserDetailPage from "./pages/SubUserDetailPage";
 
 function App() {
   return (
@@ -56,6 +57,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SubUserPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sub-user/:id/"
+        element={
+          <ProtectedRoute>
+            <SubUserDetailPage />
           </ProtectedRoute>
         }
       />

@@ -53,7 +53,7 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name',
-                  'last_name', 'email', 'number', 'address']
-        read_only_fields = ['id', 'username']
+                  'last_name', 'email', 'number', 'address', 'joined_at']
+        read_only_fields = ['id', 'username', 'joined_at']
 
   

@@ -6,6 +6,8 @@ import { useState } from "react";
 import Navbar from "../components/Navbar";
 import EditableField from "../components/EditableField.jsx";
 import GoBackButton from "../components/GoBackButton.jsx";
+import ECSDButton from "../components/EditCancelSaveDelete.jsx";
+import DetailPageLayout from "../components/DetailPageLayout.jsx";
 
 function partyToForm(party) {
   return {
@@ -107,9 +109,8 @@ function PartyDetailPage() {
     );
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Navbar />
-      <div className="max-w-3xl mx-auto p-6 space-y-4">
+    <div>
+      <DetailPageLayout>
         <EditableField
           label="Logo"
           name="logo"
@@ -169,39 +170,16 @@ function PartyDetailPage() {
         />
         {deleteError && <p className="text-red-600 text-sm">{deleteError}</p>}
 
-        {isEditing ? (
-          <div className="flex gap-3">
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-green-600 text-white rounded"
-            >
-              Save
-            </button>
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 bg-slate-400 text-white rounded"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <div className="flex gap-3">
-            <button
-              onClick={handleEdit}
-              className="px-4 py-2 bg-blue-600 text-white rounded"
-            >
-              Edit
-            </button>
-            <button
-              onClick={handleDelete}
-              className="px-4 py-2 bg-red-600 text-white rounded"
-            >
-              Delete
-            </button>
-          </div>
-        )}
-      </div>
-      <GoBackButton to="/parties/" />
+        <ECSDButton
+          isEditing={isEditing}
+          handleCancel={handleCancel}
+          handleDelete={handleDelete}
+          handleEdit={handleEdit}
+          handleSave={handleSave}
+        />
+
+        <GoBackButton to="/parties/" />
+      </DetailPageLayout>
     </div>
   );
 }
