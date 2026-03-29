@@ -6,12 +6,13 @@ import {
   updateEmployee,
 } from "../api/employees.js";
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import EditableField from "../components/EditableField.jsx";
+import { useForm } from "react-hook-form";
 import GoBackButton from "../components/GoBackButton.jsx";
 import DetailPageLayout from "../components/DetailPageLayout.jsx";
 import ECSDButton from "../components/EditCancelSaveDelete.jsx";
 import EarlyReturn from "../components/EarlyReturns.jsx";
+import ConfirmActionModal from "../components/ConfirmActionModal.jsx";
+import DetailFieldsRenderer from "../components/DetailFieldsRenderer.jsx";
 
 function employeeToForm(employee) {
   return {
@@ -91,7 +92,6 @@ const fields = [
 ];
 
 function SubUserDetailPage() {
-  //states
   const { id } = useParams();
   const [isEditing, setIsEditing] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -99,7 +99,6 @@ function SubUserDetailPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // hokes
   const {
     control,
     handleSubmit,
@@ -109,7 +108,6 @@ function SubUserDetailPage() {
     formState: { errors },
   } = useForm({ defaultValues: employeeToForm() });
 
-  //api call
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["employee", id],
     queryFn: () => getEmployee(id),
@@ -170,7 +168,6 @@ function SubUserDetailPage() {
     },
   });
 
-  // Functions
   function handleEdit() {
     reset(employeeToForm(data));
     clearErrors();
@@ -198,6 +195,7 @@ function SubUserDetailPage() {
 
   function closeDeleteModal() {
     if (deleteMutation.isPending) return;
+    setDeleteError("");
     setIsDeleteModalOpen(false);
   }
 
@@ -214,40 +212,13 @@ function SubUserDetailPage() {
 
   return (
     <DetailPageLayout>
-      {fields.map((field) =>
-        field.editable ? (
-          <Controller
-            key={field.name}
-            name={field.name}
-            control={control}
-            rules={field.rules}
-            render={({ field: controllerField }) => (
-              <EditableField
-                type={field.type}
-                label={field.label}
-                name={field.name}
-                value={
-                  isEditing
-                    ? (controllerField.value ?? "")
-                    : (data[field.name] ?? "")
-                }
-                onChange={controllerField.onChange}
-                onBlur={controllerField.onBlur}
-                isEditing={isEditing}
-                error={errors[field.name]?.message}
-              />
-            )}
-          />
-        ) : (
-          <EditableField
-            key={field.name}
-            label={field.label}
-            name={field.name}
-            value={data[field.name] ?? ""}
-            isEditing={false}
-          />
-        ),
-      )}
+      <DetailFieldsRenderer
+        fields={fields}
+        data={data}
+        control={control}
+        errors={errors}
+        isEditing={isEditing}
+      />
 
       {errors.root?.serverError?.message && (
         <p className="text-sm text-red-600">
@@ -267,52 +238,22 @@ function SubUserDetailPage() {
 
       <GoBackButton to="/sub-user/" />
 
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-subuser-title"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-          >
-            <h2
-              id="delete-subuser-title"
-              className="text-lg font-semibold text-gray-900"
-            >
-              Delete employee?
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-600">
-              This will permanently delete{" "}
-              <span className="font-medium">{data.username}</span>.
-            </p>
-
-            {deleteError && (
-              <p className="mt-3 text-sm text-red-600">{deleteError}</p>
-            )}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={closeDeleteModal}
-                disabled={deleteMutation.isPending}
-                className="rounded bg-slate-200 px-4 py-2 text-slate-800"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={confirmDelete}
-                disabled={deleteMutation.isPending}
-                className="rounded bg-red-600 px-4 py-2 text-white"
-              >
-                {deleteMutation.isPending ? "Deleting..." : "Yes, delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmActionModal
+        isOpen={isDeleteModalOpen}
+        title="Delete employee?"
+        message={
+          <>
+            This will permanently delete{" "}
+            <span className="font-medium">{data.username}</span>.
+          </>
+        }
+        error={deleteError}
+        isPending={deleteMutation.isPending}
+        confirmText="Yes, delete"
+        pendingText="Deleting..."
+        onCancel={closeDeleteModal}
+        onConfirm={confirmDelete}
+      />
     </DetailPageLayout>
   );
 }
