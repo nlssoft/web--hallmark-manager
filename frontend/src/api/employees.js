@@ -1,48 +1,67 @@
-// api/employees.js
-
 import api from "./axios";
 
-const getApiErrorMessage = (data) => {
-  if (!data) return "";
+const createApiError = (err) => {
+  const status = err.response?.status;
+  const data = err.response?.data;
 
-  if (typeof data === "string") return data;
+  const apiError = new Error("Something went wrong");
+
+  if (status === 403) {
+    apiError.message =
+      typeof data?.detail === "string"
+        ? data.detail
+        : typeof data?.error === "string"
+          ? data.error
+          : "You are not allowed to access this page";
+    return apiError;
+  }
+
+  if (status === 401) {
+    apiError.message = "Session expired. Please login again.";
+    return apiError;
+  }
+
+  if (status >= 500) {
+    apiError.message = "Server error. Try again later.";
+    return apiError;
+  }
+
+  if (typeof data === "string") {
+    apiError.message = data;
+    return apiError;
+  }
 
   if (Array.isArray(data)) {
-    return data.map((item) => String(item)).join(" ");
+    apiError.message = data.map(String).join(" ");
+    return apiError;
   }
 
-  if (typeof data === "object") {
-    if (typeof data.detail === "string") return data.detail;
-    if (typeof data.error === "string") return data.error;
+  if (data && typeof data === "object") {
+    const fieldErrors = Object.fromEntries(
+      Object.entries(data)
+        .map(([field, value]) => {
+          const messages = (Array.isArray(value) ? value : [value])
+            .filter(Boolean)
+            .map(String);
 
-    const messages = Object.entries(data).flatMap(([field, value]) => {
-      const values = Array.isArray(value) ? value : [value];
+          return [field, messages.join(" ")];
+        })
+        .filter(([, message]) => message),
+    );
 
-      return values
-        .filter(Boolean)
-        .map((message) =>
-          field === "non_field_errors"
-            ? String(message)
-            : `${field}: ${String(message)}`,
-        );
-    });
-
-    return messages.join(" ");
+    if (Object.keys(fieldErrors).length > 0) {
+      apiError.fieldErrors = fieldErrors;
+      apiError.message =
+        fieldErrors.non_field_errors ||
+        fieldErrors.detail ||
+        fieldErrors.error ||
+        Object.values(fieldErrors).join(" ");
+      return apiError;
+    }
   }
 
-  return "";
-};
-
-const handleApiError = (err) => {
-  const status = err.response?.status;
-  const message = getApiErrorMessage(err.response?.data);
-
-  if (status === 403)
-    return message || "You are not allowed to access this page";
-  if (status === 401) return "Session expired. Please login again.";
-  if (status >= 500) return "Server error. Try again later.";
-
-  return message || "Something went wrong";
+  apiError.message = err.message || "Something went wrong";
+  return apiError;
 };
 
 export const loadEmployees = async (params = {}) => {
@@ -50,7 +69,7 @@ export const loadEmployees = async (params = {}) => {
     const res = await api.get("/auth/employee/", { params });
     return res.data;
   } catch (err) {
-    throw new Error(handleApiError(err));
+    throw createApiError(err);
   }
 };
 
@@ -59,7 +78,7 @@ export const createEmployees = async (data) => {
     const res = await api.post("/auth/employee/", data);
     return res.data;
   } catch (err) {
-    throw new Error(handleApiError(err));
+    throw createApiError(err);
   }
 };
 
@@ -68,7 +87,7 @@ export const getEmployee = async (id) => {
     const res = await api.get(`/auth/employee/${id}/`);
     return res.data;
   } catch (err) {
-    throw new Error(handleApiError(err));
+    throw createApiError(err);
   }
 };
 
@@ -77,7 +96,7 @@ export const updateEmployee = async (id, data) => {
     const res = await api.patch(`/auth/employee/${id}/`, data);
     return res.data;
   } catch (err) {
-    throw new Error(handleApiError(err));
+    throw createApiError(err);
   }
 };
 
@@ -85,6 +104,6 @@ export const deleteEmployee = async (id) => {
   try {
     await api.delete(`/auth/employee/${id}/`);
   } catch (err) {
-    throw new Error(handleApiError(err));
+    throw createApiError(err);
   }
 };
