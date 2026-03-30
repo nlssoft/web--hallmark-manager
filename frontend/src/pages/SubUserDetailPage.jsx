@@ -5,7 +5,8 @@ import {
   getEmployee,
   updateEmployee,
 } from "../api/employees.js";
-import { useState } from "react";
+import { applyServerFormErrors } from "../api/error.js";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import GoBackButton from "../components/GoBackButton.jsx";
 import DetailPageLayout from "../components/DetailPageLayout.jsx";
@@ -112,7 +113,6 @@ function SubUserDetailPage() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["employee", id],
     queryFn: () => getEmployee(id),
-    placeholderData: (previousData) => previousData,
   });
 
   const updateMutation = useMutation({
@@ -126,34 +126,8 @@ function SubUserDetailPage() {
       setIsEditing(false);
     },
     onError: (err) => {
-      clearErrors();
-
-      if (err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
-        Object.entries(err.fieldErrors).forEach(([field, message]) => {
-          if (
-            field === "non_field_errors" ||
-            field === "detail" ||
-            field === "error"
-          ) {
-            setError("root.serverError", {
-              type: "server",
-              message,
-            });
-            return;
-          }
-
-          setError(field, {
-            type: "server",
-            message,
-          });
-        });
-        return;
-      }
-
-      setError("root.serverError", {
-        type: "server",
-        message: err.message || "Could not update employee.",
-      });
+      clearPageState();
+      applyServerFormErrors(err, setError, "Could not update employee.");
     },
   });
 
@@ -169,26 +143,36 @@ function SubUserDetailPage() {
     },
   });
 
-  function handleEdit() {
-    reset(employeeToForm(data));
+  useEffect(() => {
+    if (data && !isEditing) {
+      reset(employeeToForm(data));
+    }
+  }, [data, isEditing, reset]);
+
+  //less-coding function
+  function clearPageState() {
     clearErrors();
     setDeleteError("");
+  }
+
+  function resetFromEmployee(employee = data) {
+    reset(employeeToForm(employee));
+  }
+
+  //button function
+  function handleEdit() {
+    resetFromEmployee();
+    clearPageState();
     setIsEditing(true);
   }
 
   function handleCancel() {
-    reset(employeeToForm(data));
-    clearErrors();
-    setDeleteError("");
+    resetFromEmployee();
+    clearPageState();
     setIsEditing(false);
   }
 
-  function onSubmit(values) {
-    clearErrors();
-    setDeleteError("");
-    updateMutation.mutate(values);
-  }
-
+  // model function
   function openDeleteModal() {
     setDeleteError("");
     setIsDeleteModalOpen(true);
@@ -205,6 +189,13 @@ function SubUserDetailPage() {
     deleteMutation.mutate();
   }
 
+  // task perform function
+  function onSubmit(values) {
+    clearPageState();
+    updateMutation.mutate(values);
+  }
+
+  //Early returns
   if (isLoading || isError) {
     return (
       <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
@@ -215,7 +206,6 @@ function SubUserDetailPage() {
     <DetailPageLayout>
       <DetailFieldsRenderer
         fields={fields}
-        data={data}
         control={control}
         errors={errors}
         isEditing={isEditing}
@@ -237,7 +227,10 @@ function SubUserDetailPage() {
         isDeleting={deleteMutation.isPending}
       />
 
-      <GoBackButton to="/sub-user/" />
+      <GoBackButton
+        to="/sub-user/"
+        disabled={updateMutation.isPending || deleteMutation.isPending}
+      />
 
       <ConfirmActionModal
         isOpen={isDeleteModalOpen}

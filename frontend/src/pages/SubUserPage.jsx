@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { loadEmployees, createEmployees } from "../api/employees";
-import CreateField from "../components/CreateField";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../components/Navbar";
+import { applyServerFormErrors } from "../api/error.js";
 import PaginationControls from "../components/PaginationControls";
 import EarlyReturn from "../components/EarlyReturns";
+import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
+import ListPageLayout from "../components/ListPageLayout";
 
 //initial state
 const fields = [
@@ -131,33 +132,7 @@ function SubUserPage() {
     },
     onError: (err) => {
       clearErrors();
-
-      if (err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
-        Object.entries(err.fieldErrors).forEach(([field, message]) => {
-          if (
-            field === "non_field_errors" ||
-            field === "detail" ||
-            field === "error"
-          ) {
-            setError("root.serverError", {
-              type: "server",
-              message,
-            });
-            return;
-          }
-
-          setError(field, {
-            type: "server",
-            message,
-          });
-        });
-        return;
-      }
-
-      setError("root.serverError", {
-        type: "server",
-        message: err.message || "Could not update employee.",
-      });
+      applyServerFormErrors();
     },
   });
 
@@ -185,86 +160,59 @@ function SubUserPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Navbar />
+    <ListPageLayout
+      form={
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <CreateFieldsRenderer
+            fields={fields}
+            control={control}
+            errors={errors}
+          />
 
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* FORM */}
-          <div className="w-full lg:w-96 flex-shrink-0 lg:sticky lg:top-20 self-start">
-            <div className="bg-white p-5 border border-gray-300 rounded-lg shadow-sm">
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-                {fields.map((fieldConfig) => (
-                  <div key={fieldConfig.name}>
-                    <Controller
-                      name={fieldConfig.name}
-                      control={control}
-                      rules={fieldConfig.rules}
-                      render={({ field }) => (
-                        <CreateField
-                          type={fieldConfig.type}
-                          label={fieldConfig.label}
-                          name={fieldConfig.name}
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                        />
-                      )}
-                    />
-                    {errors[fieldConfig.name]?.message && (
-                      <p className="text-sm text-red-600">
-                        {errors[fieldConfig.name].message}
-                      </p>
-                    )}
-                  </div>
-                ))}
-                {errors.root?.serverError?.message && (
-                  <p className="text-sm text-red-600">
-                    {errors.root.serverError.message}
-                  </p>
-                )}
-                <button
-                  disabled={createMutation.isPending}
-                  className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
-                  type="submit"
-                >
-                  {createMutation.isPending
-                    ? "Adding Employee..."
-                    : "Add Employee"}
-                </button>
-              </form>
-            </div>
-          </div>
+          {errors.root?.serverError?.message && (
+            <p className="text-sm text-red-600">
+              {errors.root.serverError.message}
+            </p>
+          )}
 
-          {/* LIST */}
-          <div className="flex-1">
-            <div className="flex flex-col gap-4">
-              {employees.map((emp) => (
-                <div
-                  key={emp.id}
-                  onClick={() => navigate(`${emp.id}/`)}
-                  className="bg-white p-4 rounded-lg shadow-sm hover:bg-gray-50 hover:shadow-md cursor-pointer transition"
-                >
-                  <div className="text-gray-900 font-semibold">
-                    {emp.username}
-                  </div>
-                  <div className="text-gray-500 text-sm">{emp.address}</div>
+          <button
+            disabled={createMutation.isPending}
+            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            type="submit"
+          >
+            {createMutation.isPending ? "Adding Employee..." : "Add Employee"}
+          </button>
+        </form>
+      }
+      list={
+        <>
+          <div className="flex flex-col gap-4">
+            {employees.map((emp) => (
+              <div
+                key={emp.id}
+                onClick={() => navigate(`${emp.id}/`)}
+                className="bg-white p-4 rounded-lg shadow-sm hover:bg-gray-50 hover:shadow-md cursor-pointer transition"
+              >
+                <div className="text-gray-900 font-semibold">
+                  {emp.username}
                 </div>
-              ))}
-            </div>
-
-            <div className="mt-6">
-              <PaginationControls
-                page={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                showBack
-                onBack={() => navigate(-1)}
-              />
-            </div>
+                <div className="text-gray-500 text-sm">{emp.address}</div>
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
-    </div>
+
+          <div className="mt-6">
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              showBack
+              onBack={() => navigate("/dashboard/")}
+            />
+          </div>
+        </>
+      }
+    />
   );
 }
 

@@ -61,3 +61,32 @@ export const createApiError = (err) => {
   apiError.message = err.message || "Something went wrong";
   return apiError;
 };
+
+export function applyServerFormErrors(err, setError, fallbackMessage) {
+  if (err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
+    Object.entries(err.fieldErrors).forEach(([field, message]) => {
+      if (
+        field === "non_field_errors" ||
+        field === "detail" ||
+        field === "error"
+      ) {
+        setError("root.serverError", {
+          type: "server",
+          message,
+        });
+        return;
+      }
+
+      setError(field, {
+        type: "server",
+        message,
+      });
+    });
+    return;
+  }
+
+  setError("root.serverError", {
+    type: "server",
+    message: err.message || fallbackMessage,
+  });
+}

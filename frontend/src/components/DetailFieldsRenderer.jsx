@@ -3,53 +3,32 @@ import EditableField from "./EditableField.jsx";
 
 export default function DetailFieldsRenderer({
   fields,
-  data,
   control,
   errors,
   isEditing,
 }) {
   return (
     <>
-      {fields.map((field) => {
-        const displayValue =
-          typeof field.getDisplayValue === "function"
-            ? field.getDisplayValue(data)
-            : (data?.[field.name] ?? "");
-
-        if (!field.editable) {
-          return (
+      {fields.map((fieldConfig) => (
+        <Controller
+          key={fieldConfig.name}
+          name={fieldConfig.name}
+          control={control}
+          rules={fieldConfig.rules}
+          render={({ field }) => (
             <EditableField
-              key={field.name}
-              type={field.type}
-              label={field.label}
-              name={field.name}
-              value={displayValue}
-              isEditing={false}
+              type={fieldConfig.type}
+              label={fieldConfig.label}
+              name={fieldConfig.name}
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              isEditing={Boolean(fieldConfig.editable && isEditing)}
+              error={errors?.[fieldConfig.name]?.message}
             />
-          );
-        }
-
-        return (
-          <Controller
-            key={field.name}
-            name={field.name}
-            control={control}
-            rules={field.rules}
-            render={({ field: controllerField }) => (
-              <EditableField
-                type={field.type}
-                label={field.label}
-                name={field.name}
-                value={isEditing ? (controllerField.value ?? "") : displayValue}
-                onChange={controllerField.onChange}
-                onBlur={controllerField.onBlur}
-                isEditing={isEditing}
-                error={errors?.[field.name]?.message}
-              />
-            )}
-          />
-        );
-      })}
+          )}
+        />
+      ))}
     </>
   );
 }

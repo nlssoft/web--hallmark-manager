@@ -4,7 +4,7 @@ export default function CreateField({ type, label, name, value, onChange }) {
     "w-full px-3 py-1.5 rounded-md bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
   return (
-    <div className="flex mb-5">
+    <div>
       {type === "textArea" ? (
         <textarea
           className={fieldClasses}
