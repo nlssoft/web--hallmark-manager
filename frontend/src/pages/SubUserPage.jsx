@@ -1,30 +1,119 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { loadEmployees, createEmployees } from "../api/employees";
 import CreateField from "../components/CreateField";
-import { useForm } from "../hooks/useForm";
+import { useForm, Controller } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import PaginationControls from "../components/PaginationControls";
+import EarlyReturn from "../components/EarlyReturns";
+
+//initial state
+const fields = [
+  {
+    label: "username",
+    name: "username",
+    rules: { required: "Username is required." },
+  },
+  {
+    label: "password",
+    name: "password",
+    type: "password",
+    rules: {
+      required: "Password is required.",
+    },
+  },
+  {
+    label: "Confirm Password",
+    name: "confirmPassword",
+    type: "password",
+    rules: {
+      required: "Please confirm your password",
+    },
+  },
+  {
+    label: "First Name",
+    name: "first_name",
+    rules: {
+      maxLength: {
+        value: 150,
+        message: "First name must be 150 characters or fewer.",
+      },
+    },
+  },
+  {
+    label: "Last Name",
+    name: "last_name",
+    rules: {
+      maxLength: {
+        value: 150,
+        message: "Last name must be 150 characters or fewer.",
+      },
+    },
+  },
+
+  {
+    label: "Email",
+    name: "email",
+    rules: {
+      required: "Email is required.",
+      pattern: {
+        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        message: "Enter a valid email address",
+      },
+    },
+  },
+  {
+    label: "Number",
+    name: "number",
+    rules: {
+      required: "Number is required.",
+      maxLength: {
+        value: 255,
+        message: "Number must be 255 characters or fewer.",
+      },
+    },
+  },
+  {
+    label: "Address",
+    name: "address",
+    type: "textArea",
+    rules: {
+      required: "Address is required.",
+      maxLength: {
+        value: 255,
+        message: "Address must be 255 characters or fewer.",
+      },
+    },
+  },
+];
+
+const defaultValues = {
+  username: "",
+  password: "",
+  confirmPassword: "",
+  first_name: "",
+  last_name: "",
+  email: "",
+  number: "",
+  address: "",
+};
 
 function SubUserPage() {
-  //initial state
-  const { formData, handleFormChange, resetForm } = useForm({
-    username: "",
-    password: "",
-    first_name: "",
-    last_name: "",
-    email: "",
-    address: "",
-    number: "",
-  });
-
   //varibles
   const queryClient = useQueryClient();
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const navigate = useNavigate();
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    clearErrors,
+    setError,
+    formState: { errors },
+  } = useForm({ defaultValues: defaultValues });
 
   //querys
   const { data, isLoading, isError, error } = useQuery({
@@ -33,53 +122,67 @@ function SubUserPage() {
     placeholderData: (previousData) => previousData,
   });
 
+  const createMutation = useMutation({
+    mutationFn: (payload) => createEmployees(payload),
+    onSuccess: () => {
+      reset();
+      clearErrors();
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+    onError: (err) => {
+      clearErrors();
+
+      if (err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
+        Object.entries(err.fieldErrors).forEach(([field, message]) => {
+          if (
+            field === "non_field_errors" ||
+            field === "detail" ||
+            field === "error"
+          ) {
+            setError("root.serverError", {
+              type: "server",
+              message,
+            });
+            return;
+          }
+
+          setError(field, {
+            type: "server",
+            message,
+          });
+        });
+        return;
+      }
+
+      setError("root.serverError", {
+        type: "server",
+        message: err.message || "Could not update employee.",
+      });
+    },
+  });
+
   const employees = data?.results ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / pageSize));
 
   //function
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (formData.password === confirmPassword) {
-      try {
-        await createEmployees(formData);
-        resetForm();
-        setConfirmPassword("");
-        queryClient.invalidateQueries({ queryKey: ["employees"] });
-      } catch (err) {
-        console.log(err);
-      }
-    } else {
-      alert("Password doesn't match");
+  function onSubmit(values) {
+    if (values.password !== values.confirmPassword) {
+      setError("confirmPassword", {
+        type: "manual",
+        message: "Password do not match",
+      });
+      return;
     }
+    const { confirmPassword, ...payload } = values;
+    createMutation.mutate(payload);
   }
 
   //Early returns
-  if (isLoading)
+  if (isLoading || isError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white px-6 py-4 rounded-lg shadow-sm flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-gray-700 text-sm">Loading...</span>
-        </div>
-      </div>
+      <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
     );
-
-  if (isError)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white px-6 py-4 rounded-lg shadow-sm text-center max-w-sm">
-          <p className="text-red-500 font-medium">
-            {error?.message || "Something went wrong"}
-          </p>
-
-          <p className="text-gray-500 text-sm mt-1">
-            {error?.message?.includes("not allowed")
-              ? "You don’t have permission to view this."
-              : "Please try again later."}
-          </p>
-        </div>
-      </div>
-    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -90,71 +193,43 @@ function SubUserPage() {
           {/* FORM */}
           <div className="w-full lg:w-96 flex-shrink-0 lg:sticky lg:top-20 self-start">
             <div className="bg-white p-5 border border-gray-300 rounded-lg shadow-sm">
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <CreateField
-                  name={"username"}
-                  label={"Username"}
-                  value={formData.username}
-                  onChange={handleFormChange}
-                />
-
-                <CreateField
-                  type={"password"}
-                  name={"password"}
-                  label={"Password"}
-                  value={formData.password}
-                  onChange={handleFormChange}
-                />
-
-                <CreateField
-                  type={"password"}
-                  name={"confirmPassword"}
-                  label={"Password confirmation"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-
-                <CreateField
-                  name={"first_name"}
-                  label={"First Name"}
-                  value={formData.first_name}
-                  onChange={handleFormChange}
-                />
-
-                <CreateField
-                  name={"last_name"}
-                  label={"Last Name"}
-                  value={formData.last_name}
-                  onChange={handleFormChange}
-                />
-
-                <CreateField
-                  name={"email"}
-                  label={"Email"}
-                  value={formData.email}
-                  onChange={handleFormChange}
-                />
-
-                <CreateField
-                  type={"textArea"}
-                  name={"address"}
-                  label={"Address"}
-                  value={formData.address}
-                  onChange={handleFormChange}
-                />
-
-                <CreateField
-                  name={"number"}
-                  label={"Number"}
-                  value={formData.number}
-                  onChange={handleFormChange}
-                />
-
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+                {fields.map((fieldConfig) => (
+                  <div key={fieldConfig.name}>
+                    <Controller
+                      name={fieldConfig.name}
+                      control={control}
+                      rules={fieldConfig.rules}
+                      render={({ field }) => (
+                        <CreateField
+                          type={fieldConfig.type}
+                          label={fieldConfig.label}
+                          name={fieldConfig.name}
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                    {errors[fieldConfig.name]?.message && (
+                      <p className="text-sm text-red-600">
+                        {errors[fieldConfig.name].message}
+                      </p>
+                    )}
+                  </div>
+                ))}
+                {errors.root?.serverError?.message && (
+                  <p className="text-sm text-red-600">
+                    {errors.root.serverError.message}
+                  </p>
+                )}
                 <button
+                  disabled={createMutation.isPending}
                   className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
                   type="submit"
                 >
-                  Add Employee
+                  {createMutation.isPending
+                    ? "Adding Employee..."
+                    : "Add Employee"}
                 </button>
               </form>
             </div>

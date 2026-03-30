@@ -26,6 +26,7 @@ function employeeToForm(employee) {
   };
 }
 
+//initial state
 const fields = [
   { label: "Username", name: "username", editable: false },
   {
