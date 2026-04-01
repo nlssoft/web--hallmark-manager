@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { getServices } from "../api/serviceType";
+import { loadService } from "../api/serviceType";
 import Navbar from "../components/Navbar";
 import GoBackButton from "../components/GoBackButton.jsx";
 
@@ -12,7 +12,7 @@ function ServiceTypePage() {
   //querys
   const { data, isLoading, isError } = useQuery({
     queryKey: ["serviceType"],
-    queryFn: () => getServices().then((res) => res.data),
+    queryFn: loadService,
   });
 
   //earlyReturns

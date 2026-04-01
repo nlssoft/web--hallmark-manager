@@ -56,4 +56,11 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
                   'last_name', 'email', 'number', 'address', 'joined_at']
         read_only_fields = ['id', 'username', 'joined_at']
 
-  
+
+# mini serializers
+
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta(BaseUserCreateSerializer.Meta):
+        model = User
+        fields = ['id', 'username', 'address']
+

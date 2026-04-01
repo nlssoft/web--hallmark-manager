@@ -1,105 +1,77 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createParties, loadParties } from "../api/parties";
-import { useAuth } from "../context/AuthContext";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { loadEmployees } from "../api/employees";
 
-import FiltersBar from "../components/FilterBar";
-import PaginationControls from "../components/PaginationControls";
 import { applyServerFormErrors } from "../api/error";
+import { createWorkRate, loadWorkRate } from "../api/workRate.js";
+import { loadParties } from "../api/parties.js";
+import { loadService } from "../api/serviceType.js";
+
+import FiltersBar from "../components/FilterBar.jsx";
+import PaginationControls from "../components/PaginationControls";
 import EarlyReturn from "../components/EarlyReturns";
 import ListPageLayout from "../components/ListPageLayout";
 import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
 
 //initial state
 const fields = [
-  { label: "Logo", name: "logo" },
   {
-    label: "First Name",
-    name: "first_name",
-    rules: {
-      required: "First name is required.",
-      maxLength: {
-        value: 255,
-        message: "First name must be 255 characters or fewer.",
-      },
-    },
-  },
-  {
-    label: "Last Name",
-    name: "last_name",
-    rules: {
-      maxLength: {
-        value: 255,
-        message: "Last name must be 255 characters or fewer.",
-      },
-    },
-  },
-  {
-    label: "Email",
-    name: "email",
-    rules: {
-      pattern: {
-        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        message: "Enter a valid email address",
-      },
-    },
-  },
-  {
-    label: "Number",
-    name: "number",
-    rules: {
-      maxLength: {
-        value: 255,
-        message: "Number must be 255 characters or fewer.",
-      },
-    },
-  },
-  {
-    label: "Address",
-    name: "address",
-    type: "textArea",
-    rules: {
-      maxLength: {
-        value: 255,
-        message: "Address must be 255 characters or fewer.",
-      },
-    },
-  },
-  {
-    label: "Assigned to",
-    name: "assigned_to_id",
+    label: "Party",
     type: "autocomplete",
-    labelKey: "username",
+    name: "party_id",
+    rules: { required: "Party is required." },
+    labelKey: "full_name",
     subLabelKey: "address",
-    placeholder: "Assigned to",
+    placeholder: "Party",
   },
-];
-
-const filterFields = [
-  { name: "logo", placeholder: "Logo" },
-  { name: "first_name", placeholder: "First name" },
-  { name: "last_name", placeholder: "Last name" },
+  {
+    label: "Service type",
+    type: "autocomplete",
+    name: "service_type_id",
+    rules: {
+      required: "Service type is required.",
+    },
+    labelKey: "type_of_work",
+    placeholder: "Service type",
+  },
+  {
+    label: "Rate",
+    name: "rate",
+    rules: {
+      required: "Rate is required.",
+      min: {
+        value: 1,
+        message: "Rate cannot be less then 1.",
+      },
+      validate: (value) => {
+        const decimal = value.toString().split(".")[1];
+        if (decimal && decimal.length > 2)
+          return "Max 2 decimal places allowed.";
+        return true;
+      },
+    },
+  },
 ];
 
 const defaultValues = {
-  logo: "",
-  first_name: "",
-  last_name: "",
-  email: "",
-  number: "",
-  address: "",
-  assigned_to_id: "",
+  party: "",
+  service_type: "",
+  rate: "",
 };
 
-function PartiesPage() {
+const filterFields = [
+  { name: "party__logo", placeholder: "Logo" },
+  { name: "party__first_name", placeholder: "First name" },
+  { name: "party__last_name", placeholder: "Last name" },
+];
+
+function WorkRatePage() {
   // initialStates
   const [filters, setFilters] = useState({
-    first_name: "",
-    last_name: "",
-    logo: "",
+    party__logo: "",
+    party__first_name: "",
+    party__last_name: "",
   });
 
   //varibles
@@ -107,7 +79,6 @@ function PartiesPage() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const {
     control,
@@ -120,22 +91,27 @@ function PartiesPage() {
 
   //quaries
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["parties", filters, page],
-    queryFn: () => loadParties({ ...filters, page }),
+    queryKey: ["workRate", filters, page],
+    queryFn: () => loadWorkRate({ ...filters, page }),
     placeholderData: (previousData) => previousData,
   });
 
-  const { data: employees } = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => loadEmployees().then((res) => res.results),
+  const { data: party } = useQuery({
+    queryKey: ["parties"],
+    queryFn: () => loadParties({ page_size: 1000 }).then((res) => res.results),
+  });
+
+  const { data: service } = useQuery({
+    queryKey: ["service"],
+    queryFn: loadService,
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload) => createParties(payload),
+    mutationFn: (payload) => createWorkRate(payload),
     onSuccess: () => {
       reset();
       clearErrors();
-      queryClient.invalidateQueries({ queryKey: ["parties"] });
+      queryClient.invalidateQueries({ queryKey: ["workRate"] });
     },
     onError: (err) => {
       clearErrors();
@@ -143,7 +119,7 @@ function PartiesPage() {
     },
   });
 
-  const parties = data?.results ?? [];
+  const workRate = data?.results ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
 
   //function
@@ -177,8 +153,11 @@ function PartiesPage() {
             control={control}
             errors={errors}
             fieldProps={{
-              assigned_to_id: {
-                options: employees ?? [],
+              party_id: {
+                options: party ?? [],
+              },
+              service_type_id: {
+                options: service ?? [],
               },
             }}
           />
@@ -193,34 +172,38 @@ function PartiesPage() {
             className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
             type="submit"
           >
-            {createMutation.isPending ? "Adding Party..." : "Add Party"}
+            {createMutation.isPending
+              ? "Creating work rate..."
+              : "Create work rate"}
           </button>
         </form>
       }
       list={
         <>
           <div className="flex flex-col gap-3">
-            {parties.map((party) => (
+            {workRate.map((wr) => (
               <div
-                key={party.id}
-                onClick={() => navigate(`/parties/${party.id}`)}
+                key={wr.id}
+                onClick={() => navigate(`/work-rate/${wr.id}`)}
                 className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 
       hover:shadow-md hover:-translate-y-[1px] hover:bg-gray-50 
       cursor-pointer transition-all duration-200"
               >
                 <div className="flex flex-col gap-1">
                   <span className="text-gray-900 font-semibold">
-                    {party.first_name} {party.last_name}
+                    {wr.party.first_name} {wr.party.last_name}
                   </span>
 
-                  <span className="text-gray-500 text-sm">{party.address}</span>
+                  <span className="text-gray-500 text-sm">
+                    {wr.party.address}
+                  </span>
                 </div>
 
                 <div className="flex justify-between text-sm mt-3 pt-2 border-t border-gray-100">
-                  <span className="text-red-400">Due: {party.due}</span>
-                  <span className="text-green-400">
-                    Advance: {party.advance_balance}
+                  <span className="text-red-400">
+                    Service: {wr.service_type.type_of_work}
                   </span>
+                  <span className="text-green-400">Rate: {wr.rate}</span>
                 </div>
               </div>
             ))}
@@ -240,4 +223,4 @@ function PartiesPage() {
   );
 }
 
-export default PartiesPage;
+export default WorkRatePage;

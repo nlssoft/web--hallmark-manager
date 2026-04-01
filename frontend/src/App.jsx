@@ -10,6 +10,8 @@ import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import SendEmailPage from "./pages/SendEmailPage.jsx";
 import SubUserPage from "./pages/SubUserPage.jsx";
 import SubUserDetailPage from "./pages/SubUserDetailPage";
+import WorkRatePage from "./pages/WorkRatePage.jsx";
+import WorkRateDetailPage from "./pages/WorkRateDetailPage.jsx";
 
 function App() {
   return (
@@ -65,6 +67,24 @@ function App() {
         element={
           <ProtectedRoute>
             <SubUserDetailPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/work-rate/"
+        element={
+          <ProtectedRoute>
+            <WorkRatePage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/work-rate/:id"
+        element={
+          <ProtectedRoute>
+            <WorkRateDetailPage />
           </ProtectedRoute>
         }
       />

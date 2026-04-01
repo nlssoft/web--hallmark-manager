@@ -1,13 +1,17 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { useState, useEffect } from "react";
 import { deleteParty, getParty, updateParty } from "../api/parties";
-import { useForm } from "../hooks/useForm.js";
-import { useState } from "react";
-import Navbar from "../components/Navbar";
-import EditableField from "../components/EditableField.jsx";
-import GoBackButton from "../components/GoBackButton.jsx";
-import ECSDButton from "../components/EditCancelSaveDelete.jsx";
+import { loadEmployees } from "../api/employees.js";
+import { applyServerFormErrors } from "../api/error.js";
+
+import EarlyReturn from "../components/EarlyReturns.jsx";
 import DetailPageLayout from "../components/DetailPageLayout.jsx";
+import DetailFieldsRenderer from "../components/DetailFieldsRenderer.jsx";
+import ECSDButton from "../components/EditCancelSaveDelete.jsx";
+import ConfirmActionModal from "../components/ConfirmActionModal.jsx";
+import GoBackButton from "../components/GoBackButton.jsx";
 
 function partyToForm(party) {
   return {
@@ -17,170 +21,254 @@ function partyToForm(party) {
     number: party?.number ?? "",
     email: party?.email ?? "",
     address: party?.address ?? "",
-    assigned_to: party?.assigned_to ?? "",
+    assigned_to_id: party?.assigned_to?.id ?? "",
     due: party?.due ?? "",
     advance_balance: party?.advance_balance ?? "",
   };
 }
+
+//initial state
+const fields = [
+  { label: "Logo", name: "logo", editable: true },
+  {
+    label: "First Name",
+    name: "first_name",
+    editable: true,
+    rules: {
+      required: "First name is required.",
+      maxLength: {
+        value: 255,
+        message: "First name must be 255 characters or fewer.",
+      },
+    },
+  },
+  {
+    label: "Last Name",
+    name: "last_name",
+    editable: true,
+    rules: {
+      maxLength: {
+        value: 255,
+        message: "Last name must be 255 characters or fewer.",
+      },
+    },
+  },
+  {
+    label: "Email",
+    name: "email",
+    editable: true,
+    rules: {
+      pattern: {
+        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        message: "Enter a valid email address",
+      },
+    },
+  },
+  {
+    label: "Number",
+    name: "number",
+    editable: true,
+    rules: {
+      maxLength: {
+        value: 255,
+        message: "Number must be 255 characters or fewer.",
+      },
+    },
+  },
+  {
+    label: "Address",
+    name: "address",
+    type: "textArea",
+    editable: true,
+    rules: {
+      maxLength: {
+        value: 255,
+        message: "Address must be 255 characters or fewer.",
+      },
+    },
+  },
+  {
+    label: "Assigned to",
+    name: "assigned_to_id",
+    type: "autocomplete",
+    labelKey: "username",
+    subLabelKey: "address",
+    placeholder: "Assigned to",
+    editable: true,
+  },
+];
 
 function PartyDetailPage() {
   //States
   const { id } = useParams();
   const [isEditing, setIsEditing] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  const {
+    control,
+    handleSubmit,
+    reset,
+    clearErrors,
+    setError,
+    formState: { errors },
+  } = useForm({ defaultValues: partyToForm() });
+
   // Api Call
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["party", id],
-    queryFn: () => getParty(id).then((res) => res.data),
+    queryFn: () => getParty(id),
   });
 
-  //initialState
-  const { formData, handleFormChange, resetForm } = useForm({
-    logo: "",
-    first_name: "",
-    last_name: "",
-    number: "",
-    email: "",
-    address: "",
-    assigned_to: "",
-    due: "",
-    advance_balance: "",
+  const { data: employees } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => loadEmployees().then((res) => res.results),
   });
 
-  // Functions
-  function handleEdit() {
+  const updateMutation = useMutation({
+    mutationFn: (payload) => updateParty(id, payload),
+    onSuccess: (updatedParty) => {
+      queryClient.invalidateQueries({ queryKey: ["party", id] });
+      queryClient.invalidateQueries({ queryKey: ["parties"] });
+      reset(partyToForm(updatedParty));
+      clearErrors();
+      setDeleteError("");
+      setIsEditing(false);
+    },
+    onError: (err) => {
+      clearPageState();
+      applyServerFormErrors(err, setError, "Could not update party.");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteParty(id),
+    onSuccess: () => {
+      setIsDeleteModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["parties"] });
+      navigate("/parties/");
+    },
+    onError: (err) => {
+      setDeleteError(err.message || "Could not delete party.");
+    },
+  });
+
+  useEffect(() => {
+    if (data && !isEditing) {
+      reset(partyToForm(data));
+    }
+  }, [data, isEditing, reset]);
+
+  //less-coding function
+  function clearPageState() {
+    clearErrors();
     setDeleteError("");
-    resetForm(partyToForm(data));
+  }
+
+  function resetFormParty(party = data) {
+    reset(partyToForm(party));
+  }
+
+  //button function
+  function handleEdit() {
+    resetFormParty();
+    clearPageState();
     setIsEditing(true);
   }
 
   function handleCancel() {
-    setDeleteError("");
-    resetForm(partyToForm(data));
+    resetFormParty();
+    clearPageState();
     setIsEditing(false);
   }
 
-  async function handleSave(params) {
-    try {
-      await updateParty(id, formData);
-      await queryClient.invalidateQueries({ queryKey: ["party", id] });
-      await queryClient.invalidateQueries({ queryKey: ["parties"] });
-      setIsEditing(false);
-    } catch (err) {
-      console.log(err);
-    }
+  // model function
+  function openDeleteModal() {
+    setDeleteError("");
+    setIsDeleteModalOpen(true);
   }
 
-  async function handleDelete() {
+  function closeDeleteModal() {
+    if (deleteMutation.isPending) return;
     setDeleteError("");
+    setIsDeleteModalOpen(false);
+  }
 
-    try {
-      await deleteParty(id);
-      await queryClient.invalidateQueries({ queryKey: ["parties"] });
-      navigate("/parties");
-    } catch (err) {
-      setDeleteError(err.response?.data?.error || "Could not delete party.");
-    }
+  function confirmDelete() {
+    setDeleteError("");
+    deleteMutation.mutate();
+  }
+
+  // task perform function
+  function onSubmit(values) {
+    clearPageState();
+    updateMutation.mutate(values);
   }
 
   //Early returns
-  if (isLoading)
+  if (isLoading || isError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white px-6 py-4 rounded-lg shadow-sm flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-gray-700 text-sm">Loading...</span>
-        </div>
-      </div>
+      <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
     );
-
-  if (isError)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white px-6 py-4 rounded-lg shadow-sm text-center">
-          <p className="text-red-500 font-medium">Something went wrong</p>
-          <p className="text-gray-500 text-sm mt-1">Please try again later.</p>
-        </div>
-      </div>
-    );
+  }
 
   return (
-    <div>
-      <DetailPageLayout>
-        <EditableField
-          label="Logo"
-          name="logo"
-          value={isEditing ? formData.logo : data.logo}
-          onChange={handleFormChange}
-          isEditing={isEditing}
-        />
-        <EditableField
-          label="First name"
-          name="first_name"
-          value={isEditing ? formData.first_name : data.first_name}
-          onChange={handleFormChange}
-          isEditing={isEditing}
-        />
-        <EditableField
-          label="Last name"
-          name="last_name"
-          value={isEditing ? formData.last_name : data.last_name}
-          onChange={handleFormChange}
-          isEditing={isEditing}
-        />
-        <EditableField
-          label="Number"
-          name="number"
-          value={isEditing ? formData.number : data.number}
-          onChange={handleFormChange}
-          isEditing={isEditing}
-        />
-        <EditableField
-          label="Email"
-          name="email"
-          value={isEditing ? formData.email : data.email}
-          onChange={handleFormChange}
-          isEditing={isEditing}
-        />
-        <EditableField
-          type={"textArea"}
-          label="Address"
-          name="address"
-          value={isEditing ? formData.address : data.address}
-          onChange={handleFormChange}
-          isEditing={isEditing}
-        />
-        <EditableField
-          label="Due"
-          name="due"
-          value={isEditing ? formData.due : data.due}
-          onChange={handleFormChange}
-          isEditing={false}
-        />
-        <EditableField
-          label="Advance Balance"
-          name="advance_balance"
-          value={isEditing ? formData.advance_balance : data.advance_balance}
-          onChange={handleFormChange}
-          isEditing={false}
-        />
-        {deleteError && <p className="text-red-600 text-sm">{deleteError}</p>}
+    <DetailPageLayout>
+      <DetailFieldsRenderer
+        fields={fields}
+        control={control}
+        errors={errors}
+        fieldProps={{
+          assigned_to_id: {
+            options: employees ?? [],
+          },
+        }}
+        isEditing={isEditing}
+      />
 
-        <ECSDButton
-          isEditing={isEditing}
-          handleCancel={handleCancel}
-          handleDelete={handleDelete}
-          handleEdit={handleEdit}
-          handleSave={handleSave}
-        />
+      {errors.root?.serverError?.message && (
+        <p className="text-sm text-red-600">
+          {errors.root.serverError.message}
+        </p>
+      )}
 
-        <GoBackButton to="/parties/" />
-      </DetailPageLayout>
-    </div>
+      <ECSDButton
+        isEditing={isEditing}
+        handleCancel={handleCancel}
+        handleEdit={handleEdit}
+        handleSave={handleSubmit(onSubmit)}
+        handleDelete={openDeleteModal}
+        isSaving={updateMutation.isPending}
+        isDeleting={deleteMutation.isPending}
+      />
+
+      <GoBackButton
+        to="/parties/"
+        disabled={updateMutation.isPending || deleteMutation.isPending}
+      />
+
+      <ConfirmActionModal
+        isOpen={isDeleteModalOpen}
+        title="Delete Party?"
+        message={
+          <>
+            This will permanently delete{" "}
+            <span className="font-medium">
+              {data.first_name} {data.last_name}
+            </span>
+            .
+          </>
+        }
+        error={deleteError}
+        isPending={deleteMutation.isPending}
+        confirmText="Yes, delete"
+        pendingText="Deleting..."
+        onCancel={closeDeleteModal}
+        onConfirm={confirmDelete}
+      />
+    </DetailPageLayout>
   );
 }
 

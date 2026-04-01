@@ -3,9 +3,15 @@ from django.utils.timezone import timedelta, localdate
 from .models import *
 from django.contrib.auth import get_user_model
 from django.db.models import F, ExpressionWrapper, DecimalField, Exists, OuterRef
-
+from  core.serializers import UserMiniSerializer
 
 class PartySerializer(serializers.ModelSerializer):
+
+    full_name = serializers.SerializerMethodField()
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}"
+    
 
     due = serializers.DecimalField(
         max_digits=10,
@@ -21,34 +27,50 @@ class PartySerializer(serializers.ModelSerializer):
 
     )
 
+    assigned_to = UserMiniSerializer(read_only=True)
+
+    assigned_to_id = serializers.PrimaryKeyRelatedField(
+        queryset=get_user_model().objects.all(),
+        source = 'assigned_to',
+        write_only = True,
+        required = False,
+        allow_null = True,
+    )
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         request = self.context.get('request')
+        user_model = get_user_model()
 
-        if request and not request.user.parent:
-            user = get_user_model()
-            self.fields['assigned_to'].queryset = user.objects.filter(
-                parent=request.user)
+        if request:
+            user = request.user
+
+            if user.parent:
+                # sub-user → cannot assign anyone
+                self.fields['assigned_to_id'].queryset = user_model.objects.none()
+            else:
+                # admin → only their employees
+                self.fields['assigned_to_id'].queryset = user_model.objects.filter(
+                    parent=user
+                )
 
     class Meta:
         model = Party
         fields = ['id',
                   'logo',
+                  'full_name',
                   'first_name',
                   'last_name',
                   'number',
                   'email',
                   'address',
                   'assigned_to',
+                  'assigned_to_id',
                   'due',
                   'advance_balance',
-
                   ]
 
-        extra_kwargs = {
-            'assigned_to': {'required': False, "allow_null": True}
-        }
 
     def validate_assigned_to(self, value):
         request = self.context.get('request')
@@ -74,38 +96,65 @@ class Service_TypeSerializer(serializers.ModelSerializer):
         fields = ['id', 'type_of_work', 'used']
 
 
+class PartyMiniSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}"
+    
+    class Meta:
+        model = Party
+        fields = ['id', 'full_name', 'first_name', 'last_name', 'logo', 'address']
+
+class Service_TypeMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model= Service_Type
+        fields = ['id', 'type_of_work']
 class Work_RateSerializer(serializers.ModelSerializer):
+    
+    party = PartyMiniSerializer(read_only=True)
+    service_type = Service_TypeMiniSerializer(read_only=True)  # fixed casing
+
+    party_id = serializers.PrimaryKeyRelatedField(
+        queryset=Party.objects.all(),
+        source='party',
+        write_only=True,
+    )
+    service_type_id = serializers.PrimaryKeyRelatedField(
+        queryset=Service_Type.objects.all(),
+        source='service_type',
+        write_only=True,
+    )
     rate = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
         min_value=0
     )
 
-    party__first_name = serializers.CharField(
-        source='party.first_name',
-        read_only=True
-    )
-
-    party__last_name = serializers.CharField(
-        source='party.last_name',
-        read_only=True
-    )
-
-    party__logo = serializers.CharField(
-        source='party.logo',
-        read_only=True
-    )
-
-    party__address = serializers.CharField(
-        source='party.address',
-        read_only=True
-    )
-
     class Meta:
         model = Work_Rate
-        fields = ['id', 'party__first_name', 'party__last_name',
-                  'party__logo', 'party__address', 'rate', 'party', 'service_type']
-
+        fields = ['id', 'rate', 'party', 'party_id', 'service_type', 'service_type_id']  # added write fields
+        validators = [] 
+        
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and not request.user.parent:
+            # Admin only sees their own party in the dropdown
+            fields['party_id'].queryset = Party.objects.filter(user=request.user)
+            fields['service_type_id'].queryset = Service_Type.objects.filter(user=request.user) 
+                                                                            
+        return fields
+    
+    def validate(self, data):
+        if Work_Rate.objects.filter(
+            party=data['party'],
+            service_type=data['service_type']
+        ).exists():
+            raise serializers.ValidationError(
+                "This service already has a rate for this party."
+            )
+        return data
 
 class BaseRecordSerializer(serializers.ModelSerializer):
 

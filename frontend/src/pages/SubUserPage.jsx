@@ -132,7 +132,7 @@ function SubUserPage() {
     },
     onError: (err) => {
       clearErrors();
-      applyServerFormErrors();
+      applyServerFormErrors(err, setError, "Could not add employee.");
     },
   });
 

@@ -74,11 +74,6 @@ class RecordFilter(FilterSet):
         field_name='record_date'
     )
 
-    discount = filters.NumberFilter(
-        field_name='discount',
-        lookup_expr='gte'
-    )
-
     paid_amount = filters.RangeFilter(
         field_name='paid_amount'
     )
@@ -87,7 +82,6 @@ class RecordFilter(FilterSet):
         model = Record
         fields = [
             'date_range',
-            'discount',
             'paid_amount',
         ]
 
