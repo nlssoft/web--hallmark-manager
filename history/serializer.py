@@ -211,10 +211,16 @@ class BaseRecordSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
 
         if request and request.user.is_authenticated and not request.user.parent:
-            fields['Party_id'].queryset = Party.objects.filter(user=request.user)
-            fields['service_type_id'].queryset = Service_Type.objects.filter(user=request.user)
-        
+            if "party_id" in fields:
+                fields["party_id"].queryset = Party.objects.filter(user=request.user)
+
+            if "service_type_id" in fields:
+                fields["service_type_id"].queryset = Service_Type.objects.filter(
+                    user=request.user
+                )
+
         return fields
+
     
     def validate(self, attrs):
         rate = attrs.get("rate", getattr(self.instance, 'rate', None))

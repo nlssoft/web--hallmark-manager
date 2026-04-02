@@ -40,6 +40,7 @@ export default function CreateFieldsRenderer({
                     name={fieldConfig.name}
                     value={field.value ?? ""}
                     onChange={field.onChange}
+                    options={fieldConfig.options ?? []}
                   />
                 );
               }}

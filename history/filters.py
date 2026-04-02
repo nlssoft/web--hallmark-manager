@@ -74,15 +74,12 @@ class RecordFilter(FilterSet):
         field_name='record_date'
     )
 
-    paid_amount = filters.RangeFilter(
-        field_name='paid_amount'
-    )
+ 
 
     class Meta:
         model = Record
         fields = [
             'date_range',
-            'paid_amount',
         ]
 
 

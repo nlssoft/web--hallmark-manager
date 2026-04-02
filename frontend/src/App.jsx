@@ -12,6 +12,7 @@ import SubUserPage from "./pages/SubUserPage.jsx";
 import SubUserDetailPage from "./pages/SubUserDetailPage";
 import WorkRatePage from "./pages/WorkRatePage.jsx";
 import WorkRateDetailPage from "./pages/WorkRateDetailPage.jsx";
+import RecordPage from "./pages/RecordPage.jsx";
 
 function App() {
   return (
@@ -85,6 +86,15 @@ function App() {
         element={
           <ProtectedRoute>
             <WorkRateDetailPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/record/"
+        element={
+          <ProtectedRoute>
+            <RecordPage />
           </ProtectedRoute>
         }
       />

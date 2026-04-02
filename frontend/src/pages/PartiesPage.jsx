@@ -79,9 +79,17 @@ const fields = [
 ];
 
 const filterFields = [
-  { name: "logo", placeholder: "Logo" },
-  { name: "first_name", placeholder: "First name" },
-  { name: "last_name", placeholder: "Last name" },
+  { name: "logo", label: "Logo", placeholder: "Enter logo" },
+  {
+    name: "first_name",
+    label: "First Name",
+    placeholder: "Enter first name",
+  },
+  {
+    name: "last_name",
+    label: "Last Name",
+    placeholder: "Enter last name",
+  },
 ];
 
 const defaultValues = {

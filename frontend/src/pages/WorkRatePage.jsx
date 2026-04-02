@@ -61,9 +61,17 @@ const defaultValues = {
 };
 
 const filterFields = [
-  { name: "party__logo", placeholder: "Logo" },
-  { name: "party__first_name", placeholder: "First name" },
-  { name: "party__last_name", placeholder: "Last name" },
+  { name: "party__logo", label: "Logo", placeholder: "Enter logo" },
+  {
+    name: "party__first_name",
+    label: "First Name",
+    placeholder: "Enter first name",
+  },
+  {
+    name: "party__last_name",
+    label: "Last Name",
+    placeholder: "Enter last name",
+  },
 ];
 
 function WorkRatePage() {

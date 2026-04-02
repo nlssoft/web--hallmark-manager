@@ -28,9 +28,9 @@ export const getRecord = async (id) => {
   }
 };
 
-export const updateRecord = async (id, data) => {
+export const patchRecord = async (id, data) => {
   try {
-    const res = await api.put(`/history/record/${id}/`, data);
+    const res = await api.patch(`/history/record/${id}/`, data);
     return res.data;
   } catch (err) {
     throw createApiError(err);
