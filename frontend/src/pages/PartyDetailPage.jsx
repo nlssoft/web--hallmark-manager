@@ -89,6 +89,7 @@ const fields = [
   },
   {
     label: "Assigned to",
+    elabel: "Assigned to",
     name: "assigned_to_id",
     type: "autocomplete",
     labelKey: "username",

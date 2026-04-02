@@ -11,12 +11,19 @@ export default function EditableField({
   return (
     <div className="mb-5">
       <div className="flex">
-        <label className="w-24 shrink-0 text-gray-400 pt-1">{label}</label>
+        <label className="w-28 shrink-0 text-sm text-gray-500 pt-2">
+          {label}
+        </label>
 
         <div className="flex-1">
           {type === "textArea" ? (
             <textarea
-              className="w-full border rounded-2xl border-gray-400 p-3"
+              className={`w-full border rounded-xl px-4 py-2 transition-all duration-150
+                ${
+                  isEditing
+                    ? "bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    : "bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
               rows={3}
               name={name}
               value={value}
@@ -26,7 +33,12 @@ export default function EditableField({
             />
           ) : (
             <input
-              className="w-full border rounded-2xl border-gray-400 p-3 hover:shadow-md hover:bg-gray-100"
+              className={`w-full border rounded-xl px-4 py-2 transition-all duration-150
+                ${
+                  isEditing
+                    ? "bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400"
+                    : "bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
               name={name}
               value={value}
               onChange={onChange}
@@ -37,7 +49,7 @@ export default function EditableField({
         </div>
       </div>
 
-      {error && <p className="ml-24 mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="ml-28 mt-1 text-sm text-red-500">{error}</p>}
     </div>
   );
 }

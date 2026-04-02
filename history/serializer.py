@@ -147,16 +147,47 @@ class Work_RateSerializer(serializers.ModelSerializer):
         return fields
     
     def validate(self, data):
-        if Work_Rate.objects.filter(
-            party=data['party'],
-            service_type=data['service_type']
-        ).exists():
+        party = data.get('party') or getattr(self.instance, 'party', None)
+        service_type = data.get('service_type') or getattr(self.instance, 'service_type', None)
+
+        qs = Work_Rate.objects.filter(
+            party=party,
+            service_type=service_type
+        )
+
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
             raise serializers.ValidationError(
                 "This service already has a rate for this party."
             )
+
         return data
 
 class BaseRecordSerializer(serializers.ModelSerializer):
+    party = PartyMiniSerializer(read_only=True)
+    service_type = Service_TypeMiniSerializer(read_only=True)  # fixed casing
+
+    party_id = serializers.PrimaryKeyRelatedField(
+        queryset=Party.objects.all(),
+        source='party',
+        write_only=True,
+    )
+    service_type_id = serializers.PrimaryKeyRelatedField(
+        queryset=Service_Type.objects.all(),
+        source='service_type',
+        write_only=True,
+    )
+    work_rate_id = serializers.PrimaryKeyRelatedField(
+        queryset=Work_Rate.objects.all(),
+        source='work_rate',
+        write_only=True,
+    )
+
+    class Meta:
+        model = Record
+        fields = ['party_id', 'service_type_id', 'work_rate_id']
 
     def validate(self, attrs):
         rate = attrs.get("rate")
@@ -198,36 +229,10 @@ class RecordSerializer(BaseRecordSerializer):
         max_digits=10,
         decimal_places=2
     )
-
-    party__first_name = serializers.CharField(
-        source='party.first_name',
-        read_only=True
-    )
-
-    party__last_name = serializers.CharField(
-        source='party.last_name',
-        read_only=True
-    )
-
-    party__logo = serializers.CharField(
-        source='party.logo',
-        read_only=True
-    )
-
-    party__address = serializers.CharField(
-        source='party.address',
-        read_only=True
-    )
-
-    service_type__type_of_work = serializers.CharField(
-        source='service_type.type_of_work',
-        read_only=True
-    )
-
+    
     class Meta:
         model = Record
-        fields = ['id', 'party', 'party__logo', 'party__first_name', 'party__last_name', 'party__address',
-                  'service_type', 'service_type__type_of_work', 'rate',
+        fields = ['id', 'party', 'service_type', 'rate', 'party_id', 'service_type_id', 'work_rate_id',
                   'pcs', 'record_date', 'discount', 'amount', 'paid_amount']
         read_only_fields = ['paid_amount']
 

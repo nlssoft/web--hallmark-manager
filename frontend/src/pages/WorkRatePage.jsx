@@ -55,8 +55,8 @@ const fields = [
 ];
 
 const defaultValues = {
-  party: "",
-  service_type: "",
+  party_id: "",
+  service_type_id: "",
   rate: "",
 };
 

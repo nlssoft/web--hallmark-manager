@@ -27,6 +27,7 @@ export default function DetailFieldsRenderer({
                     <AutoCompleteInput
                       options={extraProps.options ?? []}
                       labelKey={fieldConfig.labelKey}
+                      elabel={fieldConfig.elabel}
                       subLabelKey={fieldConfig.subLabelKey}
                       placeholder={fieldConfig.placeholder || fieldConfig.label}
                       value={field.value}
