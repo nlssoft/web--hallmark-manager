@@ -8,41 +8,41 @@ export default function ECSDButton({
   isDeleting = false,
 }) {
   return (
-    <div>
+    <div className="section-actions">
       {isEditing ? (
-        <div className="flex gap-3">
+        <>
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 bg-green-600 text-white rounded"
+            className="primary-button"
           >
             {isSaving ? "Saving..." : "Save"}
           </button>
           <button
             onClick={handleCancel}
             disabled={isSaving}
-            className="px-4 py-2 bg-slate-400 text-white rounded"
+            className="secondary-button"
           >
             Cancel
           </button>
-        </div>
+        </>
       ) : (
-        <div className="flex gap-3">
+        <>
           <button
             onClick={handleEdit}
             disabled={isDeleting}
-            className="px-4 py-2 bg-blue-600 text-white rounded"
+            className="primary-button"
           >
             Edit
           </button>
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="px-4 py-2 bg-red-600 text-white rounded"
+            className="danger-button"
           >
             {isDeleting ? "Deleting..." : "Delete"}
           </button>
-        </div>
+        </>
       )}
     </div>
   );

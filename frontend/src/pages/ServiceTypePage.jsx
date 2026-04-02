@@ -1,72 +1,56 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { loadService } from "../api/serviceType";
 import Navbar from "../components/Navbar";
 import GoBackButton from "../components/GoBackButton.jsx";
+import EarlyReturn from "../components/EarlyReturns.jsx";
 
 function ServiceTypePage() {
-  //varibles
-  const navigate = useNavigate();
-
-  //querys
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["serviceType"],
     queryFn: loadService,
   });
 
-  //earlyReturns
-  if (isLoading)
+  if (isLoading || isError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white px-6 py-4 rounded-lg shadow-sm flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-gray-700 text-sm">Loading...</span>
-        </div>
-      </div>
+      <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
     );
-
-  if (isError)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white px-6 py-4 rounded-lg shadow-sm text-center">
-          <p className="text-red-500 font-medium">Something went wrong</p>
-          <p className="text-gray-500 text-sm mt-1">Please try again later.</p>
-        </div>
-      </div>
-    );
+  }
 
   return (
-    <div>
+    <div className="page-shell">
       <Navbar />
-      <div className="min-h-screen bg-gray-100 py-10">
-        <div className="max-w-2xl mx-auto space-y-4">
-          {data.map((service) => (
-            <div
-              key={service.id}
-              className="bg-white border border-gray-200 rounded-xl px-5 py-4 shadow-sm hover:shadow-md transition"
-            >
-              <div className="flex items-center justify-between">
-                {/* LEFT SIDE */}
-                <div>
-                  <div className="text-gray-900 font-semibold text-sm">
-                    {service.type_of_work}
-                  </div>
-                  <div className="text-gray-400 text-xs mt-1">
-                    Used this month
-                  </div>
-                </div>
 
-                {/* RIGHT SIDE (FIXED) */}
-                <div className="bg-blue-50 text-blue-600 text-sm font-semibold px-3 py-1 rounded-md">
-                  {service.used}
+      <main className="content-shell stack-layout">
+        <section className="section-card section-card--padded section-card--narrow">
+          <p className="section-kicker">Services</p>
+          <h1 className="section-title">Service types at a glance</h1>
+          <p className="section-copy">
+            Review available service categories and see how often each one has
+            been used this month.
+          </p>
+        </section>
+
+        <section className="section-card section-card--padded section-card--narrow">
+          <div className="service-list">
+            {data.map((service) => (
+              <div key={service.id} className="list-card cursor-default">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-lg font-semibold text-slate-900">
+                      {service.type_of_work}
+                    </div>
+                    <div className="meta-muted mt-1">Used this month</div>
+                  </div>
+
+                  <div className="info-pill">{service.used}</div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
+
         <GoBackButton to="/dashboard/" />
-      </div>
+      </main>
     </div>
   );
 }

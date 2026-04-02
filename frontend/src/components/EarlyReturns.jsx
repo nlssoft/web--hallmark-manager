@@ -1,10 +1,10 @@
 export default function EarlyReturn({ isLoading, isError, error }) {
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white px-6 py-4 rounded-lg shadow-sm flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-gray-700 text-sm">Loading...</span>
+      <div className="page-shell flex items-center justify-center px-4">
+        <div className="status-panel section-card section-card--padded flex items-center gap-3">
+          <div className="status-panel__spinner"></div>
+          <span className="text-sm text-slate-700">Loading...</span>
         </div>
       </div>
     );
@@ -12,15 +12,15 @@ export default function EarlyReturn({ isLoading, isError, error }) {
 
   if (isError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white px-6 py-4 rounded-lg shadow-sm text-center max-w-sm">
-          <p className="text-red-500 font-medium">
+      <div className="page-shell flex items-center justify-center px-4">
+        <div className="status-panel section-card section-card--padded max-w-sm text-center">
+          <p className="font-medium text-red-500">
             {error?.message || "Something went wrong"}
           </p>
 
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="mt-1 text-sm text-slate-500">
             {error?.message?.includes("not allowed")
-              ? "You don’t have permission to view this."
+              ? "You do not have permission to view this."
               : "Please try again later."}
           </p>
         </div>

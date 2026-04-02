@@ -2,9 +2,13 @@ import Navbar from "./Navbar";
 
 export default function DetailPageLayout({ children }) {
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="page-shell">
       <Navbar />
-      <div className="max-w-3xl mx-auto p-6 space-y-4">{children}</div>
+      <main className="content-shell">
+        <div className="section-card section-card--padded section-card--narrow space-y-6">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

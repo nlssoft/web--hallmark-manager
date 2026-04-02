@@ -5,57 +5,51 @@ export default function CreateField({
   value,
   onChange,
   options = [],
+  error,
 }) {
-  const fieldClasses =
-    "w-full px-3 py-1.5 rounded-md bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const fieldClasses = `app-input${error ? " app-input--error" : ""}`;
 
   if (type === "textArea") {
     return (
-      <div>
-        <textarea
-          className={fieldClasses}
-          rows={3}
-          name={name}
-          value={value}
-          onChange={onChange}
-          placeholder={label}
-        />
-      </div>
+      <textarea
+        className={`app-textarea${error ? " app-textarea--error" : ""}`}
+        rows={4}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={label}
+      />
     );
   }
 
   if (type === "select") {
     return (
-      <div>
-        <select
-          className={fieldClasses}
-          name={name}
-          value={value}
-          onChange={onChange}
-        >
-          <option value="">-- {label} --</option>
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <select
+        className={`app-select${error ? " app-select--error" : ""}`}
+        name={name}
+        value={value}
+        onChange={onChange}
+      >
+        <option value="">-- {label} --</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
     );
   }
 
   return (
-    <div>
-      <input
-        type={
-          type === "password" ? "password" : type === "date" ? "date" : "text"
-        }
-        className={fieldClasses}
-        name={name}
-        placeholder={label}
-        value={value}
-        onChange={onChange}
-      />
-    </div>
+    <input
+      type={
+        type === "password" ? "password" : type === "date" ? "date" : "text"
+      }
+      className={fieldClasses}
+      name={name}
+      placeholder={label}
+      value={value}
+      onChange={onChange}
+    />
   );
 }

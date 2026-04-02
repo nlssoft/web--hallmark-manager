@@ -9,7 +9,6 @@ import EarlyReturn from "../components/EarlyReturns";
 import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
 import ListPageLayout from "../components/ListPageLayout";
 
-//initial state
 const fields = [
   {
     label: "username",
@@ -101,7 +100,6 @@ const defaultValues = {
 };
 
 function SubUserPage() {
-  //varibles
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -116,7 +114,6 @@ function SubUserPage() {
     formState: { errors },
   } = useForm({ defaultValues: defaultValues });
 
-  //querys
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["employees"],
     queryFn: loadEmployees,
@@ -139,7 +136,6 @@ function SubUserPage() {
   const employees = data?.results ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / pageSize));
 
-  //function
   function onSubmit(values) {
     if (values.password !== values.confirmPassword) {
       setError("confirmPassword", {
@@ -152,7 +148,6 @@ function SubUserPage() {
     createMutation.mutate(payload);
   }
 
-  //Early returns
   if (isLoading || isError) {
     return (
       <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
@@ -162,7 +157,7 @@ function SubUserPage() {
   return (
     <ListPageLayout
       form={
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <CreateFieldsRenderer
             fields={fields}
             control={control}
@@ -170,14 +165,12 @@ function SubUserPage() {
           />
 
           {errors.root?.serverError?.message && (
-            <p className="text-sm text-red-600">
-              {errors.root.serverError.message}
-            </p>
+            <p className="field-error">{errors.root.serverError.message}</p>
           )}
 
           <button
             disabled={createMutation.isPending}
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            className="primary-button w-full"
             type="submit"
           >
             {createMutation.isPending ? "Adding Employee..." : "Add Employee"}
@@ -186,17 +179,23 @@ function SubUserPage() {
       }
       list={
         <>
-          <div className="flex flex-col gap-4">
+          <div className="list-stack">
             {employees.map((emp) => (
               <div
                 key={emp.id}
                 onClick={() => navigate(`${emp.id}/`)}
-                className="bg-white p-4 rounded-lg shadow-sm hover:bg-gray-50 hover:shadow-md cursor-pointer transition"
+                className="list-card"
               >
-                <div className="text-gray-900 font-semibold">
-                  {emp.username}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="text-lg font-semibold text-slate-900">
+                      {emp.username}
+                    </p>
+                    <p className="meta-muted">{emp.address}</p>
+                  </div>
+
+                  <span className="info-pill">{emp.email}</span>
                 </div>
-                <div className="text-gray-500 text-sm">{emp.address}</div>
               </div>
             ))}
           </div>

@@ -14,7 +14,6 @@ import EarlyReturn from "../components/EarlyReturns";
 import ListPageLayout from "../components/ListPageLayout";
 import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
 
-//initial state
 const fields = [
   {
     label: "Party",
@@ -75,14 +74,12 @@ const filterFields = [
 ];
 
 function WorkRatePage() {
-  // initialStates
   const [filters, setFilters] = useState({
     party__logo: "",
     party__first_name: "",
     party__last_name: "",
   });
 
-  //varibles
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
@@ -97,7 +94,6 @@ function WorkRatePage() {
     formState: { errors },
   } = useForm({ defaultValues: defaultValues });
 
-  //quaries
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["workRate", filters, page],
     queryFn: () => loadWorkRate({ ...filters, page }),
@@ -130,12 +126,10 @@ function WorkRatePage() {
   const workRate = data?.results ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
 
-  //function
   function onSubmit(data) {
     createMutation.mutate(data);
   }
 
-  //Early returns
   if (isLoading || isError) {
     return (
       <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
@@ -155,7 +149,7 @@ function WorkRatePage() {
         />
       }
       form={
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <CreateFieldsRenderer
             fields={fields}
             control={control}
@@ -170,14 +164,12 @@ function WorkRatePage() {
             }}
           />
           {errors.root?.serverError?.message && (
-            <p className="text-sm text-red-600">
-              {errors.root.serverError.message}
-            </p>
+            <p className="field-error">{errors.root.serverError.message}</p>
           )}
 
           <button
             disabled={createMutation.isPending}
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            className="primary-button w-full"
             type="submit"
           >
             {createMutation.isPending
@@ -188,30 +180,33 @@ function WorkRatePage() {
       }
       list={
         <>
-          <div className="flex flex-col gap-3">
+          <div className="list-stack">
             {workRate.map((wr) => (
               <div
                 key={wr.id}
                 onClick={() => navigate(`/work-rate/${wr.id}`)}
-                className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 
-      hover:shadow-md hover:-translate-y-[1px] hover:bg-gray-50 
-      cursor-pointer transition-all duration-200"
+                className="list-card"
               >
-                <div className="flex flex-col gap-1">
-                  <span className="text-gray-900 font-semibold">
-                    {wr.party.first_name} {wr.party.last_name}
-                  </span>
+                <div className="flex flex-col gap-4">
+                  <div className="space-y-1">
+                    <p className="text-lg font-semibold text-slate-900">
+                      {wr.party.first_name} {wr.party.last_name}
+                    </p>
+                    <p className="meta-muted">{wr.party.address}</p>
+                  </div>
 
-                  <span className="text-gray-500 text-sm">
-                    {wr.party.address}
-                  </span>
-                </div>
-
-                <div className="flex justify-between text-sm mt-3 pt-2 border-t border-gray-100">
-                  <span className="text-red-400">
-                    Service: {wr.service_type.type_of_work}
-                  </span>
-                  <span className="text-green-400">Rate: {wr.rate}</span>
+                  <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
+                    <div>
+                      <p className="meta-label">Service</p>
+                      <p className="meta-value">
+                        {wr.service_type.type_of_work}
+                      </p>
+                    </div>
+                    <div className="sm:text-right">
+                      <p className="meta-label">Rate</p>
+                      <p className="meta-value text-emerald-600">{wr.rate}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

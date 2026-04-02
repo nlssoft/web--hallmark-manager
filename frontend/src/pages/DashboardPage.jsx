@@ -16,13 +16,20 @@ const cards = [
 
 function DashboardPage() {
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="page-shell">
       <Navbar />
 
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <h1 className="text-gray-800 text-2xl font-semibold mb-8">Dashboard</h1>
+      <main className="content-shell stack-layout">
+        <section className="section-card section-card--padded">
+          <p className="section-kicker">Dashboard</p>
+          <h1 className="section-title">Everything in one clean workspace</h1>
+          <p className="section-copy">
+            Open the section you need and manage records, parties, rates, and
+            users from a consistent white interface.
+          </p>
+        </section>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="dashboard-grid">
           {cards.map((card) => (
             <DashboardCard
               key={card.title}
@@ -31,7 +38,7 @@ function DashboardPage() {
             />
           ))}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -24,48 +24,57 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white shadow-md rounded-xl p-8 w-full max-w-md">
-        <h1 className="text-2xl font-semibold text-center mb-6">Login</h1>
+    <div className="auth-shell">
+      <div className="auth-card section-card section-card--padded">
+        <div className="auth-hero">
+          <p className="section-kicker">Welcome Back</p>
+          <h1 className="auth-title">Sign in to Hallmark Manager</h1>
+          <p className="auth-copy">
+            A lighter, cleaner workspace for records, parties, rates, and daily
+            admin tasks.
+          </p>
+        </div>
 
-        {error && (
-          <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
-        )}
+        {error && <p className="field-error mb-4">{error}</p>}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Username</label>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-field">
+            <label className="form-label" htmlFor="username">
+              Username
+            </label>
             <input
+              id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="app-input"
             />
           </div>
 
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Password</label>
+          <div className="form-field">
+            <label className="form-label" htmlFor="password">
+              Password
+            </label>
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="app-input"
             />
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition"
-          >
+          <button type="submit" className="primary-button w-full">
             Sign in
           </button>
 
-          <p
+          <button
+            type="button"
             onClick={() => navigate("/forgot-password/")}
-            className="text-sm text-blue-500 text-center cursor-pointer hover:underline"
+            className="page-link mx-auto"
           >
             Forgot your password?
-          </p>
+          </button>
         </form>
       </div>
     </div>

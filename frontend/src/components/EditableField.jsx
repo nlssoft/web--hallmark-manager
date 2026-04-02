@@ -8,23 +8,35 @@ export default function EditableField({
   isEditing,
   error,
 }) {
+  const fieldClass = [
+    type === "textArea" ? "app-textarea" : "app-input",
+    !isEditing
+      ? type === "textArea"
+        ? "app-textarea--readonly"
+        : "app-input--readonly"
+      : "",
+    error
+      ? type === "textArea"
+        ? "app-textarea--error"
+        : "app-input--error"
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div className="mb-5">
-      <div className="flex">
-        <label className="w-28 shrink-0 text-sm text-gray-500 pt-2">
+    <div className="space-y-2">
+      <div className="inline-field">
+        <label className="inline-field__label" htmlFor={name}>
           {label}
         </label>
 
-        <div className="flex-1">
+        <div className="min-w-0">
           {type === "textArea" ? (
             <textarea
-              className={`w-full border rounded-xl px-4 py-2 transition-all duration-150
-                ${
-                  isEditing
-                    ? "bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    : "bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
-              rows={3}
+              id={name}
+              className={fieldClass}
+              rows={4}
               name={name}
               value={value}
               onChange={onChange}
@@ -33,12 +45,11 @@ export default function EditableField({
             />
           ) : (
             <input
-              className={`w-full border rounded-xl px-4 py-2 transition-all duration-150
-                ${
-                  isEditing
-                    ? "bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400"
-                    : "bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
+              id={name}
+              type={
+                type === "password" ? "password" : type === "date" ? "date" : "text"
+              }
+              className={fieldClass}
               name={name}
               value={value}
               onChange={onChange}
@@ -49,7 +60,7 @@ export default function EditableField({
         </div>
       </div>
 
-      {error && <p className="ml-28 mt-1 text-sm text-red-500">{error}</p>}
+      {error && <p className="field-error sm:ml-[140px]">{error}</p>}
     </div>
   );
 }

@@ -4,13 +4,13 @@ export default function DashboardCard({ title, path }) {
   const navigate = useNavigate();
 
   return (
-    <div
+    <button
+      type="button"
       onClick={() => navigate(path)}
-      className="bg-slate-800 border border-slate-700 rounded-xl p-6 
-      cursor-pointer hover:bg-slate-750 hover:border-yellow-400 
-      transition-colors duration-150"
+      className="dashboard-card text-left"
     >
-      <h2 className="text-slate-100 text-sm font-medium m-0">{title}</h2>
-    </div>
+      <h2 className="dashboard-card__title">{title}</h2>
+      <p className="dashboard-card__copy">Open this workspace</p>
+    </button>
   );
 }

@@ -15,7 +15,6 @@ import EarlyReturn from "../components/EarlyReturns";
 import ListPageLayout from "../components/ListPageLayout";
 import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
 
-//initial state
 const today = new Date().toISOString().split("T")[0];
 
 const fields = [
@@ -69,7 +68,6 @@ const fields = [
       },
     },
   },
-
   {
     label: "Pcs",
     name: "pcs",
@@ -132,7 +130,6 @@ const filterFields = [
 ];
 
 function RecordPage() {
-  // initialStates
   const [filters, setFilters] = useState({
     party__logo: "",
     party__first_name: "",
@@ -142,7 +139,6 @@ function RecordPage() {
     date_range_before: "",
   });
 
-  //varibles
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
@@ -157,7 +153,6 @@ function RecordPage() {
     formState: { errors },
   } = useForm({ defaultValues: defaultValues });
 
-  //quaries
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["record", filters, page],
     queryFn: () => loadRecords({ ...filters, page }),
@@ -190,7 +185,6 @@ function RecordPage() {
   const records = data?.results ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
 
-  //function
   function onSubmit(values) {
     const payload = { ...values };
 
@@ -209,7 +203,6 @@ function RecordPage() {
     createMutation.mutate(payload);
   }
 
-  //Early returns
   if (isLoading || isError) {
     return (
       <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
@@ -229,7 +222,7 @@ function RecordPage() {
         />
       }
       form={
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <CreateFieldsRenderer
             fields={fields}
             control={control}
@@ -244,14 +237,12 @@ function RecordPage() {
             }}
           />
           {errors.root?.serverError?.message && (
-            <p className="text-sm text-red-600">
-              {errors.root.serverError.message}
-            </p>
+            <p className="field-error">{errors.root.serverError.message}</p>
           )}
 
           <button
             disabled={createMutation.isPending}
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            className="primary-button w-full"
             type="submit"
           >
             {createMutation.isPending ? "Creating record..." : "Create record"}
@@ -260,68 +251,66 @@ function RecordPage() {
       }
       list={
         <>
-          <div className="flex flex-col gap-3">
+          <div className="list-stack">
             {records.map((r) => (
               <div
                 key={r.id}
                 onClick={() => navigate(`/record/${r.id}`)}
-                className="bg-white p-4 rounded-xl border border-gray-200 
-      hover:shadow-md hover:-translate-y-[2px] hover:bg-gray-50 
-      cursor-pointer transition-all duration-200"
+                className="list-card"
               >
-                {/* Top Section */}
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-gray-900 font-semibold">
-                      {r.party.first_name} {r.party.last_name}
-                    </p>
-                    <p className="text-gray-500 text-sm">{r.party.address}</p>
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-lg font-semibold text-slate-900">
+                        {r.party.first_name} {r.party.last_name}
+                      </p>
+                      <p className="meta-muted">{r.party.address}</p>
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-50 px-4 py-3 sm:text-right">
+                      <p className="meta-label">Date</p>
+                      <p className="meta-value">{formatDate(r.record_date)}</p>
+                    </div>
                   </div>
 
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400">Date</p>
-                    <p className="text-sm font-medium text-gray-700">
-                      {formatDate(r.record_date)}
-                    </p>
-                  </div>
-                </div>
+                  <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                      <p className="meta-label">Service</p>
+                      <p className="meta-value">
+                        {r.service_type.type_of_work}
+                      </p>
+                    </div>
 
-                {/* Middle Section */}
-                <div className="flex justify-between items-center mt-4">
-                  <div className="text-sm text-gray-600">
-                    <span className="font-medium text-gray-800">
-                      {r.service_type.type_of_work}
+                    <div>
+                      <p className="meta-label">Rate</p>
+                      <p className="meta-value">{r.rate}</p>
+                    </div>
+
+                    <div className="lg:text-right">
+                      <p className="meta-label">Amount</p>
+                      <p className="meta-value">
+                        {"\u20B9"}
+                        {r.amount}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="meta-value text-emerald-600">
+                      Paid: {"\u20B9"}
+                      {r.paid_amount}
+                    </p>
+
+                    <span
+                      className={
+                        r.paid_amount >= r.amount
+                          ? "info-pill status-pill--success"
+                          : "info-pill status-pill--danger"
+                      }
+                    >
+                      {r.paid_amount >= r.amount ? "Paid" : "Due"}
                     </span>
-                    <span className="ml-2 text-gray-400">@ {r.rate}</span>
                   </div>
-
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400">Amount</p>
-                    <p className="text-base font-semibold text-gray-900">
-                      ₹{r.amount}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Bottom Section */}
-                <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-sm text-gray-500">
-                    Paid:{" "}
-                    <span className="text-green-500 font-medium">
-                      ₹{r.paid_amount}
-                    </span>
-                  </p>
-
-                  {/* Optional status */}
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      r.paid_amount >= r.amount
-                        ? "bg-green-100 text-green-600"
-                        : "bg-red-100 text-red-500"
-                    }`}
-                  >
-                    {r.paid_amount >= r.amount ? "Paid" : "Due"}
-                  </span>
                 </div>
               </div>
             ))}

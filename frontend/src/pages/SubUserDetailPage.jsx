@@ -28,7 +28,6 @@ function employeeToForm(employee) {
   };
 }
 
-//initial state
 const fields = [
   { label: "Username", name: "username", editable: false },
   {
@@ -150,7 +149,6 @@ function SubUserDetailPage() {
     }
   }, [data, isEditing, reset]);
 
-  //less-coding function
   function clearPageState() {
     clearErrors();
     setDeleteError("");
@@ -160,7 +158,6 @@ function SubUserDetailPage() {
     reset(employeeToForm(employee));
   }
 
-  //button function
   function handleEdit() {
     resetFromEmployee();
     clearPageState();
@@ -173,7 +170,6 @@ function SubUserDetailPage() {
     setIsEditing(false);
   }
 
-  // model function
   function openDeleteModal() {
     setDeleteError("");
     setIsDeleteModalOpen(true);
@@ -190,13 +186,11 @@ function SubUserDetailPage() {
     deleteMutation.mutate();
   }
 
-  // task perform function
   function onSubmit(values) {
     clearPageState();
     updateMutation.mutate(values);
   }
 
-  //Early returns
   if (isLoading || isError) {
     return (
       <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
@@ -213,9 +207,7 @@ function SubUserDetailPage() {
       />
 
       {errors.root?.serverError?.message && (
-        <p className="text-sm text-red-600">
-          {errors.root.serverError.message}
-        </p>
+        <p className="field-error">{errors.root.serverError.message}</p>
       )}
 
       <ECSDButton

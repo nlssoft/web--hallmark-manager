@@ -13,7 +13,6 @@ import EarlyReturn from "../components/EarlyReturns";
 import ListPageLayout from "../components/ListPageLayout";
 import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
 
-//initial state
 const fields = [
   { label: "Logo", name: "logo" },
   {
@@ -103,14 +102,12 @@ const defaultValues = {
 };
 
 function PartiesPage() {
-  // initialStates
   const [filters, setFilters] = useState({
     first_name: "",
     last_name: "",
     logo: "",
   });
 
-  //varibles
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
@@ -126,7 +123,6 @@ function PartiesPage() {
     formState: { errors },
   } = useForm({ defaultValues: defaultValues });
 
-  //quaries
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["parties", filters, page],
     queryFn: () => loadParties({ ...filters, page }),
@@ -154,12 +150,10 @@ function PartiesPage() {
   const parties = data?.results ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
 
-  //function
   function onSubmit(data) {
     createMutation.mutate(data);
   }
 
-  //Early returns
   if (isLoading || isError) {
     return (
       <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
@@ -179,7 +173,7 @@ function PartiesPage() {
         />
       }
       form={
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <CreateFieldsRenderer
             fields={fields}
             control={control}
@@ -191,14 +185,12 @@ function PartiesPage() {
             }}
           />
           {errors.root?.serverError?.message && (
-            <p className="text-sm text-red-600">
-              {errors.root.serverError.message}
-            </p>
+            <p className="field-error">{errors.root.serverError.message}</p>
           )}
 
           <button
             disabled={createMutation.isPending}
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            className="primary-button w-full"
             type="submit"
           >
             {createMutation.isPending ? "Adding Party..." : "Add Party"}
@@ -207,28 +199,41 @@ function PartiesPage() {
       }
       list={
         <>
-          <div className="flex flex-col gap-3">
+          <div className="list-stack">
             {parties.map((party) => (
               <div
                 key={party.id}
                 onClick={() => navigate(`/parties/${party.id}`)}
-                className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 
-      hover:shadow-md hover:-translate-y-[1px] hover:bg-gray-50 
-      cursor-pointer transition-all duration-200"
+                className="list-card"
               >
-                <div className="flex flex-col gap-1">
-                  <span className="text-gray-900 font-semibold">
-                    {party.first_name} {party.last_name}
-                  </span>
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-lg font-semibold text-slate-900">
+                        {party.first_name} {party.last_name}
+                      </p>
+                      <p className="meta-muted">
+                        {party.address || "No address added"}
+                      </p>
+                    </div>
 
-                  <span className="text-gray-500 text-sm">{party.address}</span>
-                </div>
+                    <span className="info-pill">
+                      Logo: {party.logo || "N/A"}
+                    </span>
+                  </div>
 
-                <div className="flex justify-between text-sm mt-3 pt-2 border-t border-gray-100">
-                  <span className="text-red-400">Due: {party.due}</span>
-                  <span className="text-green-400">
-                    Advance: {party.advance_balance}
-                  </span>
+                  <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
+                    <div>
+                      <p className="meta-label">Due</p>
+                      <p className="meta-value text-red-500">{party.due}</p>
+                    </div>
+                    <div className="sm:text-right">
+                      <p className="meta-label">Advance</p>
+                      <p className="meta-value text-emerald-600">
+                        {party.advance_balance}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

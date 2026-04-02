@@ -27,7 +27,6 @@ function workRateToForm(wr) {
   };
 }
 
-//initial state
 const fields = [
   {
     label: "Party",
@@ -73,7 +72,6 @@ const fields = [
 ];
 
 function WorkRateDetailPage() {
-  //States
   const { id } = useParams();
   const [isEditing, setIsEditing] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -90,7 +88,6 @@ function WorkRateDetailPage() {
     formState: { errors },
   } = useForm({ defaultValues: workRateToForm() });
 
-  // Api Call
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["workRate", id],
     queryFn: () => getWorkRate(id),
@@ -140,7 +137,6 @@ function WorkRateDetailPage() {
     }
   }, [data, isEditing, reset]);
 
-  //less-coding function
   function clearPageState() {
     clearErrors();
     setDeleteError("");
@@ -150,7 +146,6 @@ function WorkRateDetailPage() {
     reset(workRateToForm(workRate));
   }
 
-  //button function
   function handleEdit() {
     resetFormParty();
     clearPageState();
@@ -163,7 +158,6 @@ function WorkRateDetailPage() {
     setIsEditing(false);
   }
 
-  // model function
   function openDeleteModal() {
     setDeleteError("");
     setIsDeleteModalOpen(true);
@@ -180,13 +174,11 @@ function WorkRateDetailPage() {
     deleteMutation.mutate();
   }
 
-  // task perform function
   function onSubmit(values) {
     clearPageState();
     updateMutation.mutate(values);
   }
 
-  //Early returns
   if (isLoading || isError) {
     return (
       <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
@@ -211,9 +203,7 @@ function WorkRateDetailPage() {
       />
 
       {errors.root?.serverError?.message && (
-        <p className="text-sm text-red-600">
-          {errors.root.serverError.message}
-        </p>
+        <p className="field-error">{errors.root.serverError.message}</p>
       )}
 
       <ECSDButton

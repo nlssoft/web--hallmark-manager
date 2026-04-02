@@ -27,7 +27,6 @@ function partyToForm(party) {
   };
 }
 
-//initial state
 const fields = [
   { label: "Logo", name: "logo", editable: true },
   {
@@ -100,7 +99,6 @@ const fields = [
 ];
 
 function PartyDetailPage() {
-  //States
   const { id } = useParams();
   const [isEditing, setIsEditing] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -117,7 +115,6 @@ function PartyDetailPage() {
     formState: { errors },
   } = useForm({ defaultValues: partyToForm() });
 
-  // Api Call
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["party", id],
     queryFn: () => getParty(id),
@@ -162,7 +159,6 @@ function PartyDetailPage() {
     }
   }, [data, isEditing, reset]);
 
-  //less-coding function
   function clearPageState() {
     clearErrors();
     setDeleteError("");
@@ -172,7 +168,6 @@ function PartyDetailPage() {
     reset(partyToForm(party));
   }
 
-  //button function
   function handleEdit() {
     resetFormParty();
     clearPageState();
@@ -185,7 +180,6 @@ function PartyDetailPage() {
     setIsEditing(false);
   }
 
-  // model function
   function openDeleteModal() {
     setDeleteError("");
     setIsDeleteModalOpen(true);
@@ -202,13 +196,11 @@ function PartyDetailPage() {
     deleteMutation.mutate();
   }
 
-  // task perform function
   function onSubmit(values) {
     clearPageState();
     updateMutation.mutate(values);
   }
 
-  //Early returns
   if (isLoading || isError) {
     return (
       <EarlyReturn isLoading={isLoading} isError={isError} error={error} />
@@ -230,9 +222,7 @@ function PartyDetailPage() {
       />
 
       {errors.root?.serverError?.message && (
-        <p className="text-sm text-red-600">
-          {errors.root.serverError.message}
-        </p>
+        <p className="field-error">{errors.root.serverError.message}</p>
       )}
 
       <ECSDButton

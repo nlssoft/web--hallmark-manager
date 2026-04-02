@@ -25,39 +25,46 @@ function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="auth-shell">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-2xl shadow-md w-full max-w-sm space-y-5"
+        className="auth-card section-card section-card--padded auth-form"
       >
-        <h2 className="text-2xl font-semibold text-center text-gray-800">
-          Reset Password
-        </h2>
+        <div className="auth-hero">
+          <p className="section-kicker">Secure Access</p>
+          <h2 className="auth-title">Reset Password</h2>
+          <p className="auth-copy">Enter your new password below.</p>
+        </div>
 
-        <p className="text-sm text-gray-500 text-center">
-          Enter your new password below
-        </p>
+        <div className="form-field">
+          <label className="form-label" htmlFor="new-password">
+            New password
+          </label>
+          <input
+            id="new-password"
+            type="password"
+            placeholder="New password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="app-input"
+          />
+        </div>
 
-        <input
-          type="password"
-          placeholder="New password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <div className="form-field">
+          <label className="form-label" htmlFor="confirm-password">
+            Confirm password
+          </label>
+          <input
+            id="confirm-password"
+            type="password"
+            placeholder="Confirm password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="app-input"
+          />
+        </div>
 
-        <input
-          type="password"
-          placeholder="Confirm password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition"
-        >
+        <button type="submit" className="primary-button w-full">
           Reset Password
         </button>
       </form>

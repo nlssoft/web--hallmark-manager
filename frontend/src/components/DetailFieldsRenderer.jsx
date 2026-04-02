@@ -1,7 +1,6 @@
 import { Controller } from "react-hook-form";
 import EditableField from "./EditableField.jsx";
 import AutoCompleteInput from "./AutocompleteInput.jsx";
-import CreateField from "./CreateField.jsx";
 
 export default function DetailFieldsRenderer({
   fields,
@@ -25,6 +24,7 @@ export default function DetailFieldsRenderer({
                 if (fieldConfig.type === "autocomplete") {
                   return (
                     <AutoCompleteInput
+                      id={fieldConfig.name}
                       options={extraProps.options ?? []}
                       labelKey={fieldConfig.labelKey}
                       elabel={fieldConfig.elabel}
@@ -38,6 +38,7 @@ export default function DetailFieldsRenderer({
                     />
                   );
                 }
+
                 return (
                   <EditableField
                     type={fieldConfig.type}
@@ -53,7 +54,7 @@ export default function DetailFieldsRenderer({
               }}
             />
             {errors?.[fieldConfig.name]?.message && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="field-error">
                 {errors[fieldConfig.name].message}
               </p>
             )}
