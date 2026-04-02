@@ -96,6 +96,8 @@ class Service_TypeSerializer(serializers.ModelSerializer):
         fields = ['id', 'type_of_work', 'used']
 
 
+
+#custom serializers
 class PartyMiniSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
 
@@ -110,6 +112,7 @@ class Service_TypeMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model= Service_Type
         fields = ['id', 'type_of_work']
+
 class Work_RateSerializer(serializers.ModelSerializer):
     
     party = PartyMiniSerializer(read_only=True)
@@ -179,105 +182,8 @@ class BaseRecordSerializer(serializers.ModelSerializer):
         source='service_type',
         write_only=True,
     )
-    work_rate_id = serializers.PrimaryKeyRelatedField(
-        queryset=Work_Rate.objects.all(),
-        source='work_rate',
-        write_only=True,
-    )
-
-    class Meta:
-        model = Record
-        fields = ['party_id', 'service_type_id', 'work_rate_id']
-
-    def validate(self, attrs):
-        rate = attrs.get("rate")
-        pcs = attrs.get("pcs")
-        discount = attrs.get("discount")
-
-        if discount is not None and rate is not None and pcs is not None:
-            max_discount = rate * pcs
-            if discount > max_discount:
-                raise serializers.ValidationError({
-                    "discount": f"Discount cannot exceed {max_discount}"
-                })
-
-        return attrs
-
-    def create(self, validated_data):
-        rate_mode = validated_data.pop('rate_mode')
-
-        if rate_mode == 'system':
-            work_rate = Work_Rate.objects.filter(
-                party=validated_data['party'],
-                service_type=validated_data['service_type']
-            ).first()
-
-            if not work_rate:
-                raise serializers.ValidationError(
-                    {'rate': "This party dose't have a rate taied to this service"}
-                )
-
-            if work_rate.rate > 0:
-                validated_data['rate'] = work_rate.rate
-
-        return super().create(validated_data)
 
 
-class RecordSerializer(BaseRecordSerializer):
-    amount = serializers.DecimalField(
-        read_only=True,
-        max_digits=10,
-        decimal_places=2
-    )
-    
-    class Meta:
-        model = Record
-        fields = ['id', 'party', 'service_type', 'rate', 'party_id', 'service_type_id', 'work_rate_id',
-                  'pcs', 'record_date', 'discount', 'amount', 'paid_amount']
-        read_only_fields = ['paid_amount']
-
-
-class RecordCreateSerializer(BaseRecordSerializer):
-    rate_mode = serializers.ChoiceField(
-        choices=['system', 'manual'],
-        write_only=True
-    )
-
-    party__address = serializers.CharField(
-        source='party.address',
-        read_only=True
-    )
-
-    rate = serializers.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        required=False,   # 👈 key line
-        min_value=0
-    )
-
-    discount = serializers.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        min_value=0,
-        required=False,
-    )
-
-    class Meta:
-        model = Record
-        fields = [
-            'id',
-            'party',
-            'service_type',
-            'pcs',
-            'discount',
-            'rate',
-            'rate_mode',
-            'record_date',
-            'party__address'
-        ]
-
-
-class RecordUpdateSerializer(BaseRecordSerializer):
     rate = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -294,6 +200,92 @@ class RecordUpdateSerializer(BaseRecordSerializer):
         min_value=1,
         required=False
     )
+    amount = serializers.DecimalField(
+        read_only=True,
+        max_digits=10,
+        decimal_places=2
+    )
+    
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get("request")
+
+        if request and request.user.is_authenticated and not request.user.parent:
+            fields['Party_id'].queryset = Party.objects.filter(user=request.user)
+            fields['service_type_id'].queryset = Service_Type.objects.filter(user=request.user)
+        
+        return fields
+    
+    def validate(self, attrs):
+        rate = attrs.get("rate", getattr(self.instance, 'rate', None))
+        pcs = attrs.get("pcs", getattr(self.instance, "pcs", None))
+        discount = attrs.get("discount", getattr(self.instance, "discount", None))
+
+
+        if discount is not None and rate is not None and pcs is not None:
+            max_discount = rate * pcs
+            if discount > max_discount:
+                raise serializers.ValidationError({
+                    "discount": f"Discount cannot exceed {max_discount}"
+                })
+        rate_mode = attrs.get('rate_mode')
+        if rate_mode == 'manual' and rate is None:
+            raise serializers.ValidationError({
+                'rate': 'Rate is required when rate mode is manual.'
+            })
+
+        return attrs
+
+    def create(self, validated_data):
+        rate_mode = validated_data.pop("rate_mode")
+
+        if rate_mode == "system":
+            work_rate = Work_Rate.objects.filter(
+                party=validated_data["party"],
+                service_type=validated_data["service_type"],
+            ).first()
+
+            if not work_rate:
+                raise serializers.ValidationError({
+                    "rate": "This party doesn't have a rate tied to this service."
+                })
+
+            validated_data["rate"] = work_rate.rate
+
+        return super().create(validated_data)
+    
+
+class RecordSerializer(BaseRecordSerializer):
+    
+    class Meta:
+        model = Record
+        fields = ['id', 'party', 'service_type', 'rate',
+                  'pcs', 'record_date', 'discount', 'amount', 'paid_amount']
+        read_only_fields = ['paid_amount']
+
+
+class RecordCreateSerializer(BaseRecordSerializer):
+    rate_mode = serializers.ChoiceField(
+        choices=['system', 'manual'],
+        write_only=True
+    )
+
+    class Meta:
+        model = Record
+        fields = [
+            "id",
+            "party",
+            "party_id",
+            "service_type",
+            "service_type_id",
+            "pcs",
+            "discount",
+            "rate",
+            "rate_mode",
+            "record_date",
+        ]
+
+class RecordUpdateSerializer(BaseRecordSerializer):
 
     reason = serializers.CharField(
         max_length=255,

@@ -133,7 +133,7 @@ class RecordViewSet(ModelViewSet):
         with transaction.atomic():
             record = serializer.save()
             RecordService.apply_advance(record)
-            return Response(self.get_serializer(record).data, status=status.HTTP_201_CREATED)
+            return Response(RecordSerializer(record).data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, *args, **kwargs):
         record = self.get_object()
@@ -196,7 +196,7 @@ class RecordViewSet(ModelViewSet):
                 party=record.party
             )
 
-        return Response(self.get_serializer(record).data, status=status.HTTP_200_OK)
+        return Response(RecordSerializer(record).data, status=status.HTTP_200_OK)
 
 
 class PaymentViewSet(ModelViewSet):
