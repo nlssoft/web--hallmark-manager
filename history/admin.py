@@ -98,7 +98,7 @@ class RecordAdmin(admin.ModelAdmin):
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).annotate(
             amount=ExpressionWrapper(
-                (F('rate') * F('pcs')) - F('discount'), output_field=DecimalField())
+                (F('rate') * F('pcs')), output_field=DecimalField())
         )
 
 

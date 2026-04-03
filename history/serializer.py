@@ -304,6 +304,18 @@ class RecordUpdateSerializer(BaseRecordSerializer):
 
 
 class BasePaymentSerializer(serializers.ModelSerializer):
+    party = PartyMiniSerializer(read_only=True)
+    party_id = serializers.PrimaryKeyRelatedField(
+        queryset=Party.objects.all(),
+        source='party',
+        write_only=True,
+    )
+    amount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=1)
+
+
     def validate_payment_date(self, value):
         delta = localdate() - value
 
@@ -319,35 +331,9 @@ class BasePaymentSerializer(serializers.ModelSerializer):
 
 
 class PaymentSerializer(BasePaymentSerializer):
-    amount = serializers.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        min_value=1)
-
-    party__first_name = serializers.CharField(
-        source='party.first_name',
-        read_only=True
-    )
-
-    party__last_name = serializers.CharField(
-        source='party.last_name',
-        read_only=True
-    )
-
-    party__logo = serializers.CharField(
-        source='party.logo',
-        read_only=True
-    )
-
-    party__address = serializers.CharField(
-        source='party.address',
-        read_only=True
-    )
-
     class Meta:
         model = Payment
-        fields = ['id', 'party', 'party__logo', 'party__first_name',
-                  'party__last_name', 'party__address', 'amount', 'payment_date']
+        fields = ['id', 'party', 'amount', 'payment_date', 'party_id']
 
 
 class PaymentUpdateSerializer(BasePaymentSerializer):
@@ -357,17 +343,9 @@ class PaymentUpdateSerializer(BasePaymentSerializer):
         write_only=True
     )
 
-    amount = serializers.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        min_value=1
-    )
-
-    payment_date = serializers.DateField(required=False)
-
     class Meta:
         model = Payment
-        fields = ['id', 'amount', 'payment_date', 'reason']
+        fields = ['id', 'amount', 'reason']
 
 
 class AdvanceLedgerSerializer(serializers.ModelSerializer):

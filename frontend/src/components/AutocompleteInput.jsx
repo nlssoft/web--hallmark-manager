@@ -80,6 +80,10 @@ export default function AutoCompleteInput({
             }}
             onBlur={onBlur}
             onFocus={() => isEditing && setOpen(true)}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
           />
 
           {isEditing && open && filtered.length > 0 && (

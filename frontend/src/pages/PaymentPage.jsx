@@ -5,9 +5,8 @@ import { useForm } from "react-hook-form";
 
 import { formatDate } from "../utils/dateFormat.js";
 import { applyServerFormErrors } from "../api/error";
-import { createRecord, loadRecords } from "../api/record.js";
+import { createPayment, loadPayments } from "../api/payment.js";
 import { loadParties } from "../api/parties.js";
-import { loadService } from "../api/serviceType.js";
 
 import FiltersBar from "../components/FilterBar.jsx";
 import PaginationControls from "../components/PaginationControls";
@@ -28,60 +27,8 @@ const fields = [
     placeholder: "Party",
   },
   {
-    label: "Service type",
-    type: "autocomplete",
-    name: "service_type_id",
-    rules: {
-      required: "Service type is required.",
-    },
-    labelKey: "type_of_work",
-    placeholder: "Service type",
-  },
-  {
-    label: "Rate mode",
-    type: "select",
-    name: "rate_mode",
-    rules: { required: "Rate mode is required." },
-    options: [
-      {
-        value: "manual",
-        label: "Manual",
-      },
-      { value: "system", label: "System" },
-    ],
-  },
-  {
-    label: "Rate",
-    name: "rate",
-    rules: {
-      validate: (value, formValues) => {
-        if (formValues.rate_mode === "manual" && !value) {
-          return "Rate is required.";
-        }
-        if (!value) return true;
-        if (Number(value) < 1) return "Rate cannot be less then 1.";
-        const decimal = value.toString().split(".")[1];
-        if (decimal && decimal.length > 2) {
-          return "Max 2 decimal places allowed.";
-        }
-        return true;
-      },
-    },
-  },
-  {
-    label: "Pcs",
-    name: "pcs",
-    rules: {
-      required: "Pcs is required.",
-      min: {
-        value: 1,
-        message: "Pcs cannot be less then 1.",
-      },
-    },
-  },
-  {
-    label: "Discount",
-    name: "discount",
+    label: "Amount",
+    name: "amount",
     rules: {
       validate: (value) => {
         const decimal = value.toString().split(".")[1];
@@ -94,18 +41,14 @@ const fields = [
   {
     label: "Date",
     type: "date",
-    name: "record_date",
+    name: "payment_date",
   },
 ];
 
 const defaultValues = {
   party_id: "",
-  service_type_id: "",
-  rate_mode: "system",
-  rate: "",
-  pcs: "",
-  discount: "",
-  record_date: today,
+  amount: "",
+  payment_date: today,
 };
 
 const filterFields = [
@@ -120,21 +63,15 @@ const filterFields = [
     label: "Last Name",
     placeholder: "Enter last name",
   },
-  {
-    name: "service_type__type_of_work",
-    label: "Service",
-    placeholder: "Enter service",
-  },
   { name: "date_range_after", label: "From Date", type: "date" },
   { name: "date_range_before", label: "To Date", type: "date" },
 ];
 
-function RecordPage() {
+function PaymentPage() {
   const [filters, setFilters] = useState({
     party__logo: "",
     party__first_name: "",
     party__last_name: "",
-    service_type__type_of_work: "",
     date_range_after: "",
     date_range_before: "",
   });
@@ -154,8 +91,8 @@ function RecordPage() {
   } = useForm({ defaultValues: defaultValues });
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["record", filters, page],
-    queryFn: () => loadRecords({ ...filters, page }),
+    queryKey: ["payment", filters, page],
+    queryFn: () => loadPayments({ ...filters, page }),
     placeholderData: (previousData) => previousData,
   });
 
@@ -164,43 +101,24 @@ function RecordPage() {
     queryFn: () => loadParties({ page_size: 1000 }).then((res) => res.results),
   });
 
-  const { data: service } = useQuery({
-    queryKey: ["service"],
-    queryFn: loadService,
-  });
-
   const createMutation = useMutation({
-    mutationFn: (payload) => createRecord(payload),
+    mutationFn: (payload) => createPayment(payload),
     onSuccess: () => {
       reset();
       clearErrors();
-      queryClient.invalidateQueries({ queryKey: ["record"] });
+      queryClient.invalidateQueries({ queryKey: ["payment"] });
     },
     onError: (err) => {
       clearErrors();
-      applyServerFormErrors(err, setError, "Could not create record.");
+      applyServerFormErrors(err, setError, "Could not create payment.");
     },
   });
 
-  const records = data?.results ?? [];
+  const payments = data?.results ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
 
   function onSubmit(values) {
-    const payload = { ...values };
-
-    if (payload.rate_mode === "system" || payload.rate === "") {
-      delete payload.rate;
-    }
-
-    if (payload.discount === "") {
-      delete payload.discount;
-    }
-
-    if (payload.record_date === "") {
-      delete payload.record_date;
-    }
-
-    createMutation.mutate(payload);
+    createMutation.mutate(values);
   }
 
   if (isLoading || isError) {
@@ -231,9 +149,6 @@ function RecordPage() {
               party_id: {
                 options: party ?? [],
               },
-              service_type_id: {
-                options: service ?? [],
-              },
             }}
           />
           {errors.root?.serverError?.message && (
@@ -245,76 +160,63 @@ function RecordPage() {
             className="primary-button w-full"
             type="submit"
           >
-            {createMutation.isPending ? "Creating record..." : "Create record"}
+            {createMutation.isPending
+              ? "Creating payment..."
+              : "Create payment"}
           </button>
         </form>
       }
       list={
         <>
           <div className="list-stack">
-            {records.map((r) => (
+            {payments.map((p) => (
               <div
-                key={r.id}
-                onClick={() => navigate(`/record/${r.id}`)}
+                key={p.id}
+                onClick={() => navigate(`/payment/${p.id}`)}
                 className="list-card"
               >
                 <div className="flex flex-col gap-4">
+                  {/* TOP SECTION */}
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    {/* LEFT: PARTY INFO */}
                     <div className="space-y-1">
                       <p className="text-lg font-semibold text-slate-900">
-                        {r.party.first_name} {r.party.last_name}
+                        {p.party.first_name} {p.party.last_name}
                       </p>
-                      <p className="meta-muted">{r.party.address}</p>
+                      <p className="meta-muted">{p.party.address}</p>
                     </div>
 
-                    <div className="rounded-2xl bg-slate-50 px-4 py-3 sm:text-right">
-                      <p className="meta-label">Date</p>
-                      <p className="meta-value">{formatDate(r.record_date)}</p>
+                    {/* RIGHT: DATE + AMOUNT (FIXED HERE) */}
+                    <div className="rounded-2xl bg-slate-50 px-4 py-3 sm:text-right space-y-3">
+                      <div>
+                        <p className="meta-label">Date</p>
+                        <p className="meta-value">
+                          {formatDate(p.payment_date)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="meta-label">Amount</p>
+                        <p className="text-xl font-bold text-blue-600">
+                          {"\u20B9"}
+                          {p.amount}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <div>
-                      <p className="meta-label">Service</p>
-                      <p className="meta-value">
-                        {r.service_type.type_of_work}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="meta-label">PCS</p>
-                      <p className="meta-value">{r.pcs}</p>
-                    </div>
-
-                    <div className="lg:text-right">
-                      <p className="meta-label">Amount</p>
-                      <p className="meta-value">
-                        {"\u20B9"}
-                        {r.amount}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="meta-value text-emerald-600">
-                      Due: {"\u20B9"}
-                      {Math.max(0, r.amount - (r.paid_amount + r.discount))}
-                    </p>
-
-                    <span
-                      className={
-                        r.paid_amount >= r.amount - r.discount
-                          ? "info-pill status-pill--success"
-                          : "info-pill status-pill--danger"
-                      }
-                    >
-                      {r.paid_amount >= r.amount ? "Paid" : "Due"}
-                    </span>
-                  </div>
+                  {/* OPTIONAL: REMOVE THIS IF YOU DON'T NEED EXTRA GRID */}
+                  {/* (You had it before, but it's now redundant) */}
+                  {/* 
+          <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+          </div> 
+          */}
                 </div>
               </div>
             ))}
           </div>
+
+          {/* PAGINATION */}
           <div className="mt-6">
             <PaginationControls
               page={page}
@@ -330,4 +232,4 @@ function RecordPage() {
   );
 }
 
-export default RecordPage;
+export default PaymentPage;

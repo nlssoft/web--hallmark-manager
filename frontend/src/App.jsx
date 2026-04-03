@@ -14,6 +14,9 @@ import WorkRatePage from "./pages/WorkRatePage.jsx";
 import WorkRateDetailPage from "./pages/WorkRateDetailPage.jsx";
 import RecordPage from "./pages/RecordPage.jsx";
 import RecordDetailPage from "./pages/RecordDetailPage.jsx";
+import PaymentPage from "./pages/PaymentPage.jsx";
+import PaymentDetailPage from "./pages/PaymentDetailPage.jsx";
+import SummaryPage from "./pages/SummaryPage.jsx";
 
 function App() {
   return (
@@ -104,6 +107,32 @@ function App() {
         element={
           <ProtectedRoute>
             <RecordDetailPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/payment/"
+        element={
+          <ProtectedRoute>
+            <PaymentPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/payment/:id"
+        element={
+          <ProtectedRoute>
+            <PaymentDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/summary/"
+        element={
+          <ProtectedRoute>
+            <SummaryPage />
           </ProtectedRoute>
         }
       />

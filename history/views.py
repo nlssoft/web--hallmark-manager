@@ -372,7 +372,7 @@ class SummaryView(APIView):
 
             qs = qs.annotate(
                 amount=ExpressionWrapper(
-                    F("rate") * F("pcs") - F("discount"),
+                    F("rate") * F("pcs"),
                     output_field=DecimalField()
                 ),
                 remaining_amount=ExpressionWrapper(

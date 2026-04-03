@@ -113,7 +113,7 @@ class Record(models.Model):
 
     @property
     def amount(self):
-        return (self.rate * self.pcs) - self.discount
+        return (self.rate * self.pcs)
 
     def apply_payment(self, amount):
         self.paid_amount = F("paid_amount") + amount

@@ -5,8 +5,7 @@ import { useState, useEffect } from "react";
 
 import { applyServerFormErrors } from "../api/error.js";
 import { loadParties } from "../api/parties.js";
-import { loadService } from "../api/serviceType.js";
-import { getRecord, deleteRecord, patchRecord } from "../api/record.js";
+import { getPayment, deletePayment, patchPayment } from "../api/payment.js";
 
 import EarlyReturn from "../components/EarlyReturns.jsx";
 import DetailPageLayout from "../components/DetailPageLayout.jsx";
@@ -16,18 +15,13 @@ import ConfirmActionModal from "../components/ConfirmActionModal.jsx";
 import GoBackButton from "../components/GoBackButton.jsx";
 import EditableField from "../components/EditableField.jsx";
 
-function recordToForm(r) {
+function paymentToForm(p) {
   return {
-    party_id: r?.party_id ?? r?.party?.id ?? "",
-    party_address: r?.party?.address ?? "",
-    service_type_id: r?.service_type_id ?? r?.service_type?.id ?? "",
-    rate: r?.rate ?? "",
-    pcs: r?.pcs ?? "",
-    amount: r?.amount ?? "",
-    discount: r?.discount ?? "",
-    record_date: r?.record_date ?? "",
-    paid_amount: r?.paid_amount ?? 0,
-    reason: r?.reason ?? "",
+    party_id: p?.party_id ?? p?.party?.id ?? "",
+    party_address: p?.party?.address ?? "",
+    amount: p?.amount ?? "",
+    payment_date: p?.payment_date ?? "",
+    reason: p?.reason ?? "",
   };
 }
 
@@ -48,54 +42,9 @@ const fields = [
     type: "textArea",
     editable: false,
   },
-
-  {
-    label: "Service type",
-    elabel: "Service",
-    type: "autocomplete",
-    name: "service_type_id",
-    editable: false,
-    labelKey: "type_of_work",
-    placeholder: "Service type",
-  },
-  {
-    label: "Rate",
-    name: "rate",
-    editable: true,
-    rules: {
-      required: "Rate is required.",
-      min: {
-        value: 1,
-        message: "Rate cannot be less then 1.",
-      },
-      validate: (value) => {
-        const decimal = value.toString().split(".")[1];
-        if (decimal && decimal.length > 2)
-          return "Max 2 decimal places allowed.";
-        return true;
-      },
-    },
-  },
-  {
-    label: "Pcs",
-    name: "pcs",
-    editable: true,
-    rules: {
-      required: "Pcs is required.",
-      min: {
-        value: 1,
-        message: "Pcs cannot be less then 1.",
-      },
-    },
-  },
   {
     label: "Amount",
     name: "amount",
-    editable: false,
-  },
-  {
-    label: "Discount",
-    name: "discount",
     editable: true,
     rules: {
       validate: (value) => {
@@ -109,12 +58,7 @@ const fields = [
   {
     label: "Date",
     type: "date",
-    name: "record_date",
-    editable: false,
-  },
-  {
-    label: "Paid amount",
-    name: "paid_amount",
+    name: "payment_date",
     editable: false,
   },
 ];
@@ -126,7 +70,7 @@ const reasonField = {
   editable: true,
 };
 
-function RecordDetailPage() {
+function PaymentDetailPage() {
   const { id } = useParams();
   const [isEditing, setIsEditing] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -143,11 +87,11 @@ function RecordDetailPage() {
     clearErrors,
     setError,
     formState: { errors },
-  } = useForm({ defaultValues: recordToForm() });
+  } = useForm({ defaultValues: paymentToForm() });
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["record", id],
-    queryFn: () => getRecord(id),
+    queryKey: ["payment", id],
+    queryFn: () => getPayment(id),
   });
 
   const { data: party } = useQuery({
@@ -155,42 +99,37 @@ function RecordDetailPage() {
     queryFn: () => loadParties({ page_size: 1000 }).then((res) => res.results),
   });
 
-  const { data: service } = useQuery({
-    queryKey: ["service"],
-    queryFn: loadService,
-  });
-
   const updateMutation = useMutation({
-    mutationFn: (payload) => patchRecord(id, payload),
-    onSuccess: (updatedWorkRate) => {
-      queryClient.invalidateQueries({ queryKey: ["record", id] });
-      queryClient.invalidateQueries({ queryKey: ["record"] });
-      reset(recordToForm(updatedWorkRate));
+    mutationFn: (payload) => patchPayment(id, payload),
+    onSuccess: (updatedPayment) => {
+      queryClient.invalidateQueries({ queryKey: ["payment", id] });
+      queryClient.invalidateQueries({ queryKey: ["payment"] });
+      reset(paymentToForm(updatedPayment));
       clearErrors();
       setDeleteError("");
       setIsEditing(false);
     },
     onError: (err) => {
       clearPageState();
-      applyServerFormErrors(err, setError, "Could not update record.");
+      applyServerFormErrors(err, setError, "Could not update payment.");
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteRecord(id),
+    mutationFn: () => deletePayment(id),
     onSuccess: () => {
       setIsDeleteModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["record"] });
-      navigate("/record/");
+      queryClient.invalidateQueries({ queryKey: ["payment"] });
+      navigate("/payment/");
     },
     onError: (err) => {
-      setDeleteError(err.message || "Could not delete record.");
+      setDeleteError(err.message || "Could not delete payment.");
     },
   });
 
   useEffect(() => {
     if (data && !isEditing) {
-      reset(recordToForm(data));
+      reset(paymentToForm(data));
     }
   }, [data, isEditing, reset]);
 
@@ -199,8 +138,8 @@ function RecordDetailPage() {
     setDeleteError("");
   }
 
-  function resetFormParty(workRate = data) {
-    reset(recordToForm(workRate));
+  function resetFormParty(payment = data) {
+    reset(paymentToForm(payment));
   }
 
   function handleEdit() {
@@ -235,9 +174,7 @@ function RecordDetailPage() {
     clearPageState();
 
     const payload = {
-      rate: values.rate,
-      pcs: values.pcs,
-      discount: values.discount,
+      amount: values.amount,
       ...(values.reason?.trim() ? { reason: values.reason.trim() } : {}),
     };
     updateMutation.mutate(payload);
@@ -259,9 +196,6 @@ function RecordDetailPage() {
           party_id: {
             options: party ?? [],
           },
-          service_type_id: {
-            options: service ?? [],
-          },
         }}
         isEditing={isEditing}
       />
@@ -281,7 +215,7 @@ function RecordDetailPage() {
       />
 
       <GoBackButton
-        to="/record/"
+        to="/payment/"
         disabled={updateMutation.isPending || deleteMutation.isPending}
       />
 
@@ -293,7 +227,7 @@ function RecordDetailPage() {
             This will permanently delete{" "}
             <span className="font-medium">{data.party.full_name}</span>
             <span className="font-medium">
-              {""} service: {data.service_type.type_of_work} Rate: {data.pcs}{" "}
+              {""} amount: {data.amount}
               Date: {data.record_date}
             </span>
             .
@@ -310,4 +244,4 @@ function RecordDetailPage() {
   );
 }
 
-export default RecordDetailPage;
+export default PaymentDetailPage;
