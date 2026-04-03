@@ -13,6 +13,7 @@ import SubUserDetailPage from "./pages/SubUserDetailPage";
 import WorkRatePage from "./pages/WorkRatePage.jsx";
 import WorkRateDetailPage from "./pages/WorkRateDetailPage.jsx";
 import RecordPage from "./pages/RecordPage.jsx";
+import RecordDetailPage from "./pages/RecordDetailPage.jsx";
 
 function App() {
   return (
@@ -95,6 +96,14 @@ function App() {
         element={
           <ProtectedRoute>
             <RecordPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/record/:id"
+        element={
+          <ProtectedRoute>
+            <RecordDetailPage />
           </ProtectedRoute>
         }
       />

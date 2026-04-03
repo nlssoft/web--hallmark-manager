@@ -282,8 +282,8 @@ function RecordPage() {
                     </div>
 
                     <div>
-                      <p className="meta-label">Rate</p>
-                      <p className="meta-value">{r.rate}</p>
+                      <p className="meta-label">PCS</p>
+                      <p className="meta-value">{r.pcs}</p>
                     </div>
 
                     <div className="lg:text-right">
