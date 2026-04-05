@@ -21,10 +21,14 @@ import AuditDetailPage from "./pages/AuditDetailPage.jsx";
 import AdvanceLedgerPage from "./pages/AdvanceLedgerPage.jsx";
 import AdvanceLedgerDetailPage from "./pages/AdvanceLedgerDetailPage.jsx";
 import PaymentRequestPage from "./pages/PaymentRequestPage.jsx";
+import PaymentRequestDetailPage from "./pages/PaymentRequestDetailPage.jsx";
+import ProfilePage from "./pages/ProfilePage";
+import RegisterPage from "./pages/RegisterPage";
 
 function App() {
   return (
     <Routes>
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password/" element={<SendEmailPage />} />
       <Route
@@ -36,6 +40,14 @@ function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile/me"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />
@@ -178,6 +190,14 @@ function App() {
         element={
           <ProtectedRoute>
             <PaymentRequestPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/payment-request/:id"
+        element={
+          <ProtectedRoute>
+            <PaymentRequestDetailPage />
           </ProtectedRoute>
         }
       />

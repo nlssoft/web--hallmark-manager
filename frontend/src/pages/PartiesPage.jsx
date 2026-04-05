@@ -149,6 +149,7 @@ function PartiesPage() {
 
   const parties = data?.results ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
+  const isAdmin = user?.parent_id === null || user?.parent_id === undefined;
 
   function onSubmit(data) {
     createMutation.mutate(data);
@@ -173,29 +174,31 @@ function PartiesPage() {
         />
       }
       form={
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <CreateFieldsRenderer
-            fields={fields}
-            control={control}
-            errors={errors}
-            fieldProps={{
-              assigned_to_id: {
-                options: employees ?? [],
-              },
-            }}
-          />
-          {errors.root?.serverError?.message && (
-            <p className="field-error">{errors.root.serverError.message}</p>
-          )}
+        isAdmin ? (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <CreateFieldsRenderer
+              fields={fields}
+              control={control}
+              errors={errors}
+              fieldProps={{
+                assigned_to_id: {
+                  options: employees ?? [],
+                },
+              }}
+            />
+            {errors.root?.serverError?.message && (
+              <p className="field-error">{errors.root.serverError.message}</p>
+            )}
 
-          <button
-            disabled={createMutation.isPending}
-            className="primary-button w-full"
-            type="submit"
-          >
-            {createMutation.isPending ? "Adding Party..." : "Add Party"}
-          </button>
-        </form>
+            <button
+              disabled={createMutation.isPending}
+              className="primary-button w-full"
+              type="submit"
+            >
+              {createMutation.isPending ? "Adding Party..." : "Add Party"}
+            </button>
+          </form>
+        ) : null
       }
       list={
         <>

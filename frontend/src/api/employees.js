@@ -44,3 +44,22 @@ export const deleteEmployee = async (id) => {
     throw createApiError(err);
   }
 };
+
+// ban and unban
+export const banEmployee = async (id) => {
+  try {
+    const res = await api.post(`/auth/employee/${id}/ban/`);
+    return res.data;
+  } catch (err) {
+    throw createApiError(err);
+  }
+};
+
+export const unbanEmployee = async (id) => {
+  try {
+    const res = await api.post(`/auth/employee/${id}/unban/`);
+    return res.data;
+  } catch (err) {
+    throw createApiError(err);
+  }
+};

@@ -15,6 +15,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.middleware.csrf import get_token
 from .models import User
 from history.pagination import NormalPagination
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
 
 class UserProfileViewSet(ViewSet):
@@ -84,6 +85,55 @@ class EmployeeModelViewSet(ModelViewSet):
         serializer.save()
         return Response(self.get_serializer(user).data, status=status.HTTP_200_OK)
         
+    @action(detail=True, methods=["post"])
+    def ban(self, request, pk=None):
+        # Only a parent user can ban their own employees
+        if not request.user.parent is None:
+            return Response(
+                {"detail": "Only the owner account can ban employees."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        employee = self.get_object()  # automatically uses pk from URL
+
+        # Make sure they're actually YOUR employee
+        if employee.parent != request.user:
+            return Response(
+                {"detail": "You do not have permission to ban this user."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Deactivate the account
+        employee.is_active = False
+        employee.save()
+
+        # Blacklist ALL their outstanding tokens so they're logged out immediately
+        tokens = OutstandingToken.objects.filter(user=employee)
+        for token in tokens:
+            BlacklistedToken.objects.get_or_create(token=token)
+
+        return Response({"detail": f"{employee.username} has been banned."})
+
+    @action(detail=True, methods=["post"])
+    def unban(self, request, pk=None):
+        if not request.user.parent is None:
+            return Response(
+                {"detail": "Only the owner account can unban employees."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        employee = self.get_object()
+
+        if employee.parent != request.user:
+            return Response(
+                {"detail": "You do not have permission to unban this user."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        employee.is_active = True
+        employee.save()
+
+        return Response({"detail": f"{employee.username} has been unbanned."})
 
 
 @api_view(['POST'])

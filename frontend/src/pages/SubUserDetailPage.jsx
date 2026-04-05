@@ -4,6 +4,8 @@ import {
   deleteEmployee,
   getEmployee,
   updateEmployee,
+  banEmployee,
+  unbanEmployee,
 } from "../api/employees.js";
 import { applyServerFormErrors } from "../api/error.js";
 import { useState, useEffect } from "react";
@@ -143,6 +145,22 @@ function SubUserDetailPage() {
     },
   });
 
+  const banMutation = useMutation({
+    mutationFn: () => banEmployee(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employee", id] });
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+
+  const unbanMutation = useMutation({
+    mutationFn: () => unbanEmployee(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employee", id] });
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+
   useEffect(() => {
     if (data && !isEditing) {
       reset(employeeToForm(data));
@@ -219,6 +237,31 @@ function SubUserDetailPage() {
         isSaving={updateMutation.isPending}
         isDeleting={deleteMutation.isPending}
       />
+
+      {/* Ban / Unban */}
+      {data && (
+        <div className="flex gap-3">
+          {data.is_active ? (
+            <button
+              type="button"
+              onClick={() => banMutation.mutate()}
+              disabled={banMutation.isPending || isEditing}
+              className="danger-button flex-1"
+            >
+              {banMutation.isPending ? "Banning..." : "Ban User"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => unbanMutation.mutate()}
+              disabled={unbanMutation.isPending || isEditing}
+              className="secondary-button flex-1"
+            >
+              {unbanMutation.isPending ? "Unbanning..." : "Unban User"}
+            </button>
+          )}
+        </div>
+      )}
 
       <GoBackButton
         to="/sub-user/"

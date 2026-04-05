@@ -461,7 +461,7 @@ class PaymentRequestCreateSerializer(BasePaymentRequestSerilizer):
 
         pending_ids = Payment_Request.objects.filter(
             status='P',
-            party__user=owner
+            record__party__assigned_to=user  
         ).values_list('record__id', flat=True)
 
         filtered_qs = base_qs.exclude(
@@ -469,7 +469,6 @@ class PaymentRequestCreateSerializer(BasePaymentRequestSerilizer):
         ).distinct()
 
         self.fields['record'].child_relation.queryset = filtered_qs
-
 
 class PaymentRequestUpdateSerializer(BasePaymentRequestSerilizer):
 
@@ -511,7 +510,6 @@ class PaymentRequestUpdateSerializer(BasePaymentRequestSerilizer):
             instance.save(update_fields=['requested_amount'])
 
         return instance
-
 
 class PaymentRequestRejectSerializer(serializers.Serializer):
     reason = serializers.CharField(

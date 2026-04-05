@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
-
 import { loadParties } from "../api/parties.js";
+import { getSummary } from "../api/summary.js";
 import Navbar from "../components/Navbar.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
-import { useSummary } from "../hooks/useSummary.js";
+
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const TYPE_OPTIONS = [
   { value: "record", label: "Records", subject: "HALLMARK RECORD STATEMENT" },
@@ -22,13 +23,15 @@ const TYPE_OPTIONS = [
   { value: "audit_log", label: "Audit Trail", subject: "AUDIT ACTIVITY LOG" },
 ];
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const PAGE_SIZE_OPTIONS = [20, 50, 100];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getLocalDateValue(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function createInitialFilters() {
@@ -50,33 +53,27 @@ function createInitialFilters() {
 
 function parseDateValue(value) {
   if (!value) return null;
-
   if (value instanceof Date) return value;
-
   if (typeof value === "string" && value.includes("T")) {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
   }
-
   if (typeof value === "string" && value.includes("-")) {
-    const [year, month, day] = value.split("-").map(Number);
-    if (!year || !month || !day) return null;
-    return new Date(year, month - 1, day);
+    const [y, mo, d] = value.split("-").map(Number);
+    if (!y || !mo || !d) return null;
+    return new Date(y, mo - 1, d);
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
 }
 
-function formatDate(value, options = {}) {
+function formatDate(value) {
   const date = parseDateValue(value);
   if (!date) return "N/A";
-
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    ...options,
   }).format(date);
 }
 
@@ -90,49 +87,22 @@ function formatStatementDate(value = new Date()) {
 }
 
 function formatCurrency(value) {
-  const amount = Number(value ?? 0);
-
+  const n = Number(value ?? 0);
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number.isFinite(amount) ? amount : 0);
+  }).format(isFinite(n) ? n : 0);
 }
 
 function getTypeMeta(type) {
-  return TYPE_OPTIONS.find((option) => option.value === type) ?? TYPE_OPTIONS[0];
-}
-
-function getHeadingPeriod(dateFrom, dateTo) {
-  const from = parseDateValue(dateFrom);
-  const to = parseDateValue(dateTo);
-
-  if (from && to) {
-    const sameMonth =
-      from.getMonth() === to.getMonth() &&
-      from.getFullYear() === to.getFullYear();
-
-    if (sameMonth) {
-      return `for ${new Intl.DateTimeFormat("en-IN", {
-        month: "long",
-        year: "numeric",
-      }).format(from)}`;
-    }
-
-    return `from ${formatDate(from)} to ${formatDate(to)}`;
-  }
-
-  if (from) return `from ${formatDate(from)}`;
-  if (to) return `up to ${formatDate(to)}`;
-  return "overview";
+  return TYPE_OPTIONS.find((o) => o.value === type) ?? TYPE_OPTIONS[0];
 }
 
 function getPeriodCaption(dateFrom, dateTo) {
-  if (dateFrom && dateTo) {
+  if (dateFrom && dateTo)
     return `${formatDate(dateFrom)} to ${formatDate(dateTo)}`;
-  }
-
   if (dateFrom) return `Starting ${formatDate(dateFrom)}`;
   if (dateTo) return `Up to ${formatDate(dateTo)}`;
   return "No date range selected";
@@ -140,11 +110,9 @@ function getPeriodCaption(dateFrom, dateTo) {
 
 function formatPartyName(party) {
   if (!party) return "";
-
   return (
     party.full_name ||
     [party.first_name, party.last_name].filter(Boolean).join(" ").trim() ||
-    party.logo ||
     `Party #${party.id}`
   );
 }
@@ -157,270 +125,148 @@ function getScopeLabel(filters, selectedParty) {
 function getSummaryRows(type, data) {
   if (!data) return [];
   return type === "record" || type === "payment"
-    ? data.result ?? []
-    : data.results ?? [];
+    ? (data.result ?? [])
+    : (data.results ?? []);
+}
+
+function getPaginationInfo(data, fallbackPageSize) {
+  const p = data?.pagination ?? {};
+  const total = p.total ?? 0;
+  const pageSize = Number(p.page_size ?? fallbackPageSize ?? 20) || 20;
+  const currentPage = Number(p.page ?? 1) || 1;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  return { total, pageSize, currentPage, totalPages };
+}
+
+function getAuditChangedFields(row) {
+  const before =
+    row?.before && typeof row.before === "object" ? row.before : {};
+  const after = row?.after && typeof row.after === "object" ? row.after : {};
+  const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])];
+  const changed = keys.filter(
+    (k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]),
+  );
+  return changed.length ? changed.join(", ") : "N/A";
+}
+
+function getTableColumns(type) {
+  if (type === "record")
+    return [
+      { label: "Sr.", render: (_, i) => i + 1 },
+      { label: "Date", render: (r) => formatDate(r.record_date) },
+      {
+        label: "Party",
+        render: (r) =>
+          [r.first_name, r.last_name].filter(Boolean).join(" ") || "N/A",
+      },
+      { label: "Pcs", render: (r) => r.pcs ?? 0 },
+      { label: "Rate", render: (r) => formatCurrency(r.rate) },
+      { label: "Amount", render: (r) => formatCurrency(r.amount) },
+      { label: "Discount", render: (r) => formatCurrency(r.discount) },
+      { label: "Paid", render: (r) => formatCurrency(r.paid_amount) },
+      { label: "Remaining", render: (r) => formatCurrency(r.remaining_amount) },
+    ];
+
+  if (type === "payment")
+    return [
+      { label: "Sr.", render: (_, i) => i + 1 },
+      { label: "Date", render: (r) => formatDate(r.payment_date) },
+      {
+        label: "Party",
+        render: (r) =>
+          [r.first_name, r.last_name].filter(Boolean).join(" ") || "N/A",
+      },
+      { label: "Amount", render: (r) => formatCurrency(r.amount) },
+    ];
+
+  if (type === "advance_ledger")
+    return [
+      { label: "Sr.", render: (_, i) => i + 1 },
+      { label: "Date", render: (r) => formatDate(r.created_at) },
+      {
+        label: "Party",
+        render: (r) =>
+          [r.first_name, r.last_name].filter(Boolean).join(" ") || "N/A",
+      },
+      { label: "Flow", render: (r) => r.direction || "N/A" },
+      { label: "Amount", render: (r) => formatCurrency(r.amount) },
+      { label: "Balance", render: (r) => formatCurrency(r.remaining_amount) },
+      {
+        label: "Payment",
+        render: (r) =>
+          r.payment_id
+            ? `${formatDate(r.payment_date)} / ${formatCurrency(r.payment_amount)}`
+            : "N/A",
+      },
+      {
+        label: "Record",
+        render: (r) =>
+          r.record_id
+            ? `${formatDate(r.record_date)} / ${r.record_pcs ?? 0} pcs`
+            : "N/A",
+      },
+      { label: "Service", render: (r) => r.record_type_of_work || "N/A" },
+    ];
+
+  return [
+    { label: "Sr.", render: (_, i) => i + 1 },
+    { label: "Date", render: (r) => formatDate(r.created_at) },
+    { label: "Model", render: (r) => r.model_name || "N/A" },
+    { label: "Action", render: (r) => r.action || "N/A" },
+    { label: "Object ID", render: (r) => r.object_id || "N/A" },
+    { label: "Changed Fields", render: (r) => getAuditChangedFields(r) },
+  ];
 }
 
 function getSummaryMetrics(type, summary = {}) {
-  if (type === "record") {
+  if (type === "record")
     return [
       { label: "Total records", value: summary.total_record ?? 0 },
       { label: "Total pieces", value: summary.total_pcs ?? 0 },
       { label: "Total amount", value: formatCurrency(summary.total_amount) },
-      { label: "Unpaid amount", value: formatCurrency(summary.unpaid_amount) },
+      { label: "Unpaid", value: formatCurrency(summary.unpaid_amount) },
     ];
-  }
-
-  if (type === "payment") {
+  if (type === "payment")
     return [
       { label: "Total payments", value: summary.total_payments ?? 0 },
-      { label: "Amount received", value: formatCurrency(summary.total_paid) },
+      { label: "Amount collected", value: formatCurrency(summary.total_paid) },
     ];
-  }
-
-  if (type === "advance_ledger") {
+  if (type === "advance_ledger")
     return [
       { label: "Total IN", value: formatCurrency(summary.total_in) },
       { label: "Total OUT", value: formatCurrency(summary.total_out) },
       { label: "Net balance", value: formatCurrency(summary.net_balance) },
     ];
-  }
-
   return [{ label: "Total logs", value: summary.total_logs ?? 0 }];
 }
 
-function getRecordServiceBreakdown(data) {
-  return data?.summary?.service_type_summary ?? [];
-}
-
-function getAuditChangedFields(row) {
-  const before =
-    row?.before && typeof row.before === "object" && !Array.isArray(row.before)
-      ? row.before
-      : {};
-  const after =
-    row?.after && typeof row.after === "object" && !Array.isArray(row.after)
-      ? row.after
-      : {};
-
-  const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])];
-  const changed = keys.filter(
-    (key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]),
-  );
-
-  return changed.length ? changed.join(", ") : "N/A";
-}
-
-function getTableColumns(type) {
-  if (type === "record") {
-    return [
-      { label: "Sr.", render: (_, index) => index + 1 },
-      { label: "Date", render: (row) => formatDate(row.record_date) },
-      {
-        label: "Party",
-        render: (row) =>
-          [row.first_name, row.last_name].filter(Boolean).join(" ") || "N/A",
-      },
-      { label: "Pcs", render: (row) => row.pcs ?? 0 },
-      { label: "Rate", render: (row) => formatCurrency(row.rate) },
-      { label: "Amount", render: (row) => formatCurrency(row.amount) },
-      { label: "Discount", render: (row) => formatCurrency(row.discount) },
-      { label: "Paid", render: (row) => formatCurrency(row.paid_amount) },
-      {
-        label: "Remaining",
-        render: (row) => formatCurrency(row.remaining_amount),
-      },
-    ];
-  }
-
-  if (type === "payment") {
-    return [
-      { label: "Sr.", render: (_, index) => index + 1 },
-      { label: "Date", render: (row) => formatDate(row.payment_date) },
-      {
-        label: "Party",
-        render: (row) =>
-          [row.first_name, row.last_name].filter(Boolean).join(" ") || "N/A",
-      },
-      { label: "Amount", render: (row) => formatCurrency(row.amount) },
-    ];
-  }
-
-  if (type === "advance_ledger") {
-    return [
-      { label: "Sr.", render: (_, index) => index + 1 },
-      { label: "Date", render: (row) => formatDate(row.created_at) },
-      {
-        label: "Party",
-        render: (row) =>
-          [row.first_name, row.last_name].filter(Boolean).join(" ") || "N/A",
-      },
-      { label: "Flow", render: (row) => row.direction || "N/A" },
-      { label: "Amount", render: (row) => formatCurrency(row.amount) },
-      {
-        label: "Balance",
-        render: (row) => formatCurrency(row.remaining_amount),
-      },
-      {
-        label: "Payment",
-        render: (row) =>
-          row.payment_id
-            ? `${formatDate(row.payment_date)} / ${formatCurrency(row.payment_amount)}`
-            : "N/A",
-      },
-      {
-        label: "Record",
-        render: (row) =>
-          row.record_id
-            ? `${formatDate(row.record_date)} / ${row.record_pcs ?? 0} pcs`
-            : "N/A",
-      },
-      {
-        label: "Service",
-        render: (row) => row.record_type_of_work || "N/A",
-      },
-    ];
-  }
-
-  return [
-    { label: "Sr.", render: (_, index) => index + 1 },
-    { label: "Date", render: (row) => formatDate(row.created_at) },
-    { label: "Model", render: (row) => row.model_name || "N/A" },
-    { label: "Action", render: (row) => row.action || "N/A" },
-    { label: "Object ID", render: (row) => row.object_id || "N/A" },
-    {
-      label: "Changed fields",
-      render: (row) => getAuditChangedFields(row),
-    },
-  ];
-}
-
-function getNarrativeRows(type, data, filters, selectedParty) {
-  const summary = data?.summary ?? {};
-  const serviceBreakdown = getRecordServiceBreakdown(data);
-  const serviceLine = serviceBreakdown.length
-    ? serviceBreakdown
-        .map(
-          (service) =>
-            `${service.service_type__type_of_work || "Unknown service"} ${service.total_pcs ?? 0} pcs`,
-        )
-        .join(" | ")
-    : "No service-wise pieces recorded for this range.";
-
-  if (type === "record") {
-    return [
-      { label: "Period", value: getPeriodCaption(filters.date_from, filters.date_to) },
-      { label: "Party scope", value: getScopeLabel(filters, selectedParty) },
-      { label: "Service-wise hallmark pieces", value: serviceLine },
-      {
-        label: "Billing snapshot",
-        value: `${formatCurrency(summary.total_amount)} total billed, ${formatCurrency(summary.unpaid_amount)} still unpaid.`,
-      },
-    ];
-  }
-
-  if (type === "payment") {
-    return [
-      { label: "Period", value: getPeriodCaption(filters.date_from, filters.date_to) },
-      { label: "Party scope", value: getScopeLabel(filters, selectedParty) },
-      {
-        label: "Collections captured",
-        value: `${summary.total_payments ?? 0} payments worth ${formatCurrency(summary.total_paid)}.`,
-      },
-    ];
-  }
-
-  if (type === "advance_ledger") {
-    return [
-      { label: "Period", value: getPeriodCaption(filters.date_from, filters.date_to) },
-      { label: "Party scope", value: getScopeLabel(filters, selectedParty) },
-      {
-        label: "Cash movement",
-        value: `${formatCurrency(summary.total_in)} IN, ${formatCurrency(summary.total_out)} OUT, net ${formatCurrency(summary.net_balance)}.`,
-      },
-      {
-        label: "Direction filter",
-        value: filters.direction || "All entries",
-      },
-    ];
-  }
-
-  return [
-    {
-      label: "Scope",
-      value: getScopeLabel(filters, selectedParty),
-    },
-    {
-      label: "Model filter",
-      value: filters.model || "All models",
-    },
-    {
-      label: "Action filter",
-      value: filters.action || "All actions",
-    },
-    {
-      label: "Activity captured",
-      value: `${summary.total_logs ?? 0} log entries in the current report page.`,
-    },
-  ];
-}
-
-function getActiveFilterBadges(filters, selectedParty) {
-  const badges = [getTypeMeta(filters.type).label, getScopeLabel(filters, selectedParty)];
-
-  if (filters.status) badges.push(`Status: ${filters.status}`);
-  if (filters.direction) badges.push(`Direction: ${filters.direction}`);
-  if (filters.model) badges.push(`Model: ${filters.model}`);
-  if (filters.action) badges.push(`Action: ${filters.action}`);
-
-  return badges;
-}
-
-function getPaginationInfo(data, fallbackPageSize) {
-  const pagination = data?.pagination ?? {};
-  const total = pagination.total ?? 0;
-  const pageSize = Number(pagination.page_size ?? fallbackPageSize ?? 20) || 20;
-  const currentPage = Number(pagination.page ?? 1) || 1;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  return { total, pageSize, currentPage, totalPages };
-}
-
 function makeSafeFilename(value) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
-function downloadFile(filename, content, mimeType) {
-  const blob = new Blob([content], { type: mimeType });
+function downloadCsv(columns, rows, filename) {
+  const encode = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const header = columns.map((c) => encode(c.label)).join(",");
+  const lines = rows.map((r, i) =>
+    columns.map((c) => encode(c.render(r, i))).join(","),
+  );
+  const blob = new Blob([[header, ...lines].join("\n")], {
+    type: "text/csv;charset=utf-8",
+  });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
   URL.revokeObjectURL(url);
 }
 
-function formatExportValue(value) {
-  if (value == null) return "";
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-}
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-function toCsv(columns, rows) {
-  const encode = (value) => {
-    const stringValue = formatExportValue(value).replaceAll('"', '""');
-    return `"${stringValue}"`;
-  };
-
-  const headerLine = columns.map((column) => encode(column.label)).join(",");
-  const dataLines = rows.map((row, index) =>
-    columns.map((column) => encode(column.render(row, index))).join(","),
-  );
-
-  return [headerLine, ...dataLines].join("\n");
-}
-
-function SummaryMetricCards({ items }) {
+function MetricCards({ items }) {
   return (
     <div className="summary-metric-grid">
       {items.map((item) => (
@@ -433,30 +279,29 @@ function SummaryMetricCards({ items }) {
   );
 }
 
-function SummaryTable({ columns, rows }) {
-  if (!rows.length) {
+function ReportTable({ columns, rows }) {
+  if (!rows.length)
     return (
-      <div className="summary-empty">
-        No rows match the current filters for this report.
-      </div>
+      <p style={{ color: "var(--text-muted)", padding: "1rem 0" }}>
+        No data found for these filters.
+      </p>
     );
-  }
 
   return (
     <div className="summary-table-wrap">
       <table className="summary-table">
         <thead>
           <tr>
-            {columns.map((column) => (
-              <th key={column.label}>{column.label}</th>
+            {columns.map((c) => (
+              <th key={c.label}>{c.label}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.id ?? `${row.object_id ?? "row"}-${index}`}>
-              {columns.map((column) => (
-                <td key={column.label}>{column.render(row, index)}</td>
+          {rows.map((row, i) => (
+            <tr key={row.id ?? i}>
+              {columns.map((c) => (
+                <td key={c.label}>{c.render(row, i)}</td>
               ))}
             </tr>
           ))}
@@ -466,130 +311,80 @@ function SummaryTable({ columns, rows }) {
   );
 }
 
-function SummaryStateCard({ title, copy }) {
-  return (
-    <section className="section-card section-card--padded summary-state-card">
-      <h2 className="summary-state-card__title">{title}</h2>
-      <p className="summary-state-card__copy">{copy}</p>
-    </section>
-  );
-}
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SummaryPage() {
-  const [filters, setFilters] = useState(createInitialFilters);
+  const [draftFilters, setDraftFilters] = useState(createInitialFilters);
+  const [activeFilters, setActiveFilters] = useState(null);
   const reportRef = useRef(null);
 
-  const shouldLoadSummary =
-    filters.party !== "single" || Boolean(filters.party_id);
-
-  const { data, isLoading, isError, error, isFetching } = useSummary(
-    filters,
-    shouldLoadSummary,
-  );
-
-  const {
-    data: parties = [],
-    isLoading: isPartiesLoading,
-    isError: isPartiesError,
-    error: partiesError,
-  } = useQuery({
+  const { data: parties = [], isLoading: isPartiesLoading } = useQuery({
     queryKey: ["summary-parties"],
     queryFn: () =>
-      loadParties({ page_size: 1000 }).then((res) => res.results ?? []),
-    placeholderData: (previousData) => previousData,
+      loadParties({ page_size: 1000 }).then((r) => r.results ?? []),
+    placeholderData: (prev) => prev,
   });
 
-  const selectedParty = parties.find(
-    (party) => String(party.id) === String(filters.party_id),
+  const { data, isLoading, isError, error, isFetching } = useQuery({
+    queryKey: ["summary", activeFilters],
+    queryFn: () => getSummary(activeFilters),
+    enabled: activeFilters !== null,
+    placeholderData: (prev) => prev,
+  });
+
+  const activeParty = parties.find(
+    (p) => String(p.id) === String(activeFilters?.party_id),
   );
-  const typeMeta = getTypeMeta(filters.type);
-  const rows = getSummaryRows(filters.type, data);
-  const metrics = getSummaryMetrics(filters.type, data?.summary);
-  const columns = getTableColumns(filters.type);
-  const narrativeRows = getNarrativeRows(
-    filters.type,
+  const typeMeta = getTypeMeta(activeFilters?.type ?? draftFilters.type);
+  const rows = getSummaryRows(activeFilters?.type, data);
+  const columns = getTableColumns(activeFilters?.type ?? draftFilters.type);
+  const metrics = getSummaryMetrics(activeFilters?.type, data?.summary);
+  const paginationInfo = getPaginationInfo(
     data,
-    filters,
-    selectedParty,
+    activeFilters?.page_size ?? 20,
   );
-  const badges = getActiveFilterBadges(filters, selectedParty);
-  const serviceBreakdown = getRecordServiceBreakdown(data);
-  const paginationInfo = getPaginationInfo(data, filters.page_size);
+  const serviceBreakdown = data?.summary?.service_type_summary ?? [];
+
   const fileBase = makeSafeFilename(
-    `${typeMeta.label}-${getScopeLabel(filters, selectedParty)}-${getLocalDateValue()}`,
+    `${typeMeta.label}-${getScopeLabel(activeFilters ?? draftFilters, activeParty)}-${getLocalDateValue()}`,
   );
 
   const handlePrint = useReactToPrint({
     contentRef: reportRef,
-    documentTitle: () => `${fileBase}-statement`,
+    documentTitle: () => fileBase,
     pageStyle: `
-      @page {
-        size: A4 portrait;
-        margin: 14mm;
-      }
-
+      @page { size: A4 portrait; margin: 14mm; }
       @media print {
-        body {
-          background: #ffffff !important;
+        body { background: #fff !important; }
+        .no-print { display: none !important; }
+        .summary-report {
+          min-height: calc(297mm - 28mm);
+          display: flex !important;
+          flex-direction: column !important;
+          box-shadow: none !important;
+          border: none !important;
         }
       }
     `,
   });
 
-  function updateFilter(key, value) {
-    setFilters((previous) => ({
-      ...previous,
-      [key]: value,
-      page: 1,
-    }));
+  function updateDraft(key, value) {
+    setDraftFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
   }
 
-  function handleTypeChange(nextType) {
-    setFilters((previous) => ({
-      ...previous,
-      type: nextType,
-      status: "",
-      direction: "",
-      model: "",
-      action: "",
-      page: 1,
-    }));
+  function handleGenerate() {
+    setActiveFilters({ ...draftFilters, page: 1 });
   }
 
   function handleReset() {
-    setFilters(createInitialFilters());
+    setDraftFilters(createInitialFilters());
+    setActiveFilters(null);
   }
 
   function handlePageChange(nextPage) {
-    setFilters((previous) => ({
-      ...previous,
-      page: nextPage,
-    }));
-  }
-
-  function handleDownloadJson() {
-    const payload = {
-      generated_at: new Date().toISOString(),
-      title: `${typeMeta.label} ${getHeadingPeriod(filters.date_from, filters.date_to)}`,
-      scope: getScopeLabel(filters, selectedParty),
-      filters,
-      summary: data?.summary ?? null,
-      rows,
-    };
-
-    downloadFile(
-      `${fileBase}.json`,
-      JSON.stringify(payload, null, 2),
-      "application/json",
-    );
-  }
-
-  function handleDownloadCsv() {
-    downloadFile(
-      `${fileBase}.csv`,
-      toCsv(columns, rows),
-      "text/csv;charset=utf-8",
-    );
+    const updated = { ...activeFilters, page: nextPage };
+    setActiveFilters(updated);
+    setDraftFilters(updated);
   }
 
   return (
@@ -598,36 +393,18 @@ export default function SummaryPage() {
 
       <main className="content-shell">
         <div className="stack-layout">
-          <section className="section-card section-card--padded summary-hero">
-            <div className="summary-hero__copy-block">
-              <p className="section-kicker">Summary Studio</p>
-              <h1 className="section-title">Printable period statements</h1>
-              <p className="section-copy">
-                Build polished record, payment, advance and audit statements
-                from the same filter panel, then print them or save the current
-                page as PDF, CSV or JSON.
-              </p>
-            </div>
-
-            <div className="summary-badge-row">
-              {badges.map((badge) => (
-                <span key={badge} className="summary-chip">
-                  {badge}
-                </span>
-              ))}
-              {isFetching && <span className="summary-chip">Refreshing...</span>}
-            </div>
+          {/* Page header */}
+          <section className="section-card section-card--padded no-print">
+            <p className="section-kicker">Summary Studio</p>
+            <h1 className="section-title">Printable period statements</h1>
+            <p className="section-copy">
+              Adjust filters, generate the report, then print or export.
+            </p>
           </section>
 
-          {isPartiesError && (
-            <SummaryStateCard
-              title="Could not load parties"
-              copy={partiesError?.message || "Please try refreshing the page."}
-            />
-          )}
-
           <div className="summary-layout">
-            <aside className="summary-sidebar">
+            {/* ── Sidebar ── */}
+            <aside className="summary-sidebar no-print">
               <section className="section-card section-card--padded">
                 <p className="section-kicker">Filters</p>
 
@@ -636,12 +413,22 @@ export default function SummaryPage() {
                     <span className="form-label">Report type</span>
                     <select
                       className="app-select"
-                      value={filters.type}
-                      onChange={(event) => handleTypeChange(event.target.value)}
+                      value={draftFilters.type}
+                      onChange={(e) =>
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          type: e.target.value,
+                          status: "",
+                          direction: "",
+                          model: "",
+                          action: "",
+                          page: 1,
+                        }))
+                      }
                     >
-                      {TYPE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
+                      {TYPE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
                         </option>
                       ))}
                     </select>
@@ -651,13 +438,13 @@ export default function SummaryPage() {
                     <span className="form-label">Party scope</span>
                     <select
                       className="app-select"
-                      value={filters.party}
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        setFilters((previous) => ({
-                          ...previous,
-                          party: nextValue,
-                          party_id: nextValue === "all" ? "" : previous.party_id,
+                      value={draftFilters.party}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDraftFilters((prev) => ({
+                          ...prev,
+                          party: v,
+                          party_id: v === "all" ? "" : prev.party_id,
                           page: 1,
                         }));
                       }}
@@ -667,25 +454,23 @@ export default function SummaryPage() {
                     </select>
                   </label>
 
-                  {filters.party === "single" && (
+                  {draftFilters.party === "single" && (
                     <label className="form-field form-field--wide">
                       <span className="form-label">Party</span>
                       <select
                         className="app-select"
-                        value={filters.party_id}
-                        onChange={(event) =>
-                          updateFilter("party_id", event.target.value)
-                        }
+                        value={draftFilters.party_id}
                         disabled={isPartiesLoading}
+                        onChange={(e) =>
+                          updateDraft("party_id", e.target.value)
+                        }
                       >
                         <option value="">
-                          {isPartiesLoading
-                            ? "Loading parties..."
-                            : "Choose a party"}
+                          {isPartiesLoading ? "Loading..." : "Choose a party"}
                         </option>
-                        {parties.map((party) => (
-                          <option key={party.id} value={party.id}>
-                            {formatPartyName(party)}
+                        {parties.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {formatPartyName(p)}
                           </option>
                         ))}
                       </select>
@@ -697,10 +482,8 @@ export default function SummaryPage() {
                     <input
                       className="app-input"
                       type="date"
-                      value={filters.date_from}
-                      onChange={(event) =>
-                        updateFilter("date_from", event.target.value)
-                      }
+                      value={draftFilters.date_from}
+                      onChange={(e) => updateDraft("date_from", e.target.value)}
                     />
                   </label>
 
@@ -709,22 +492,18 @@ export default function SummaryPage() {
                     <input
                       className="app-input"
                       type="date"
-                      value={filters.date_to}
-                      onChange={(event) =>
-                        updateFilter("date_to", event.target.value)
-                      }
+                      value={draftFilters.date_to}
+                      onChange={(e) => updateDraft("date_to", e.target.value)}
                     />
                   </label>
 
-                  {filters.type === "record" && (
+                  {draftFilters.type === "record" && (
                     <label className="form-field">
                       <span className="form-label">Payment status</span>
                       <select
                         className="app-select"
-                        value={filters.status}
-                        onChange={(event) =>
-                          updateFilter("status", event.target.value)
-                        }
+                        value={draftFilters.status}
+                        onChange={(e) => updateDraft("status", e.target.value)}
                       >
                         <option value="">All</option>
                         <option value="paid">Paid</option>
@@ -733,14 +512,14 @@ export default function SummaryPage() {
                     </label>
                   )}
 
-                  {filters.type === "advance_ledger" && (
+                  {draftFilters.type === "advance_ledger" && (
                     <label className="form-field">
                       <span className="form-label">Direction</span>
                       <select
                         className="app-select"
-                        value={filters.direction}
-                        onChange={(event) =>
-                          updateFilter("direction", event.target.value)
+                        value={draftFilters.direction}
+                        onChange={(e) =>
+                          updateDraft("direction", e.target.value)
                         }
                       >
                         <option value="">All</option>
@@ -750,30 +529,27 @@ export default function SummaryPage() {
                     </label>
                   )}
 
-                  {filters.type === "audit_log" && (
+                  {draftFilters.type === "audit_log" && (
                     <>
                       <label className="form-field">
                         <span className="form-label">Model</span>
                         <input
                           className="app-input"
                           type="text"
-                          placeholder="Record, Payment..."
-                          value={filters.model}
-                          onChange={(event) =>
-                            updateFilter("model", event.target.value)
-                          }
+                          placeholder="Record, Payment…"
+                          value={draftFilters.model}
+                          onChange={(e) => updateDraft("model", e.target.value)}
                         />
                       </label>
-
                       <label className="form-field">
                         <span className="form-label">Action</span>
                         <input
                           className="app-input"
                           type="text"
-                          placeholder="CREATE, UPDATE..."
-                          value={filters.action}
-                          onChange={(event) =>
-                            updateFilter("action", event.target.value)
+                          placeholder="CREATE, UPDATE…"
+                          value={draftFilters.action}
+                          onChange={(e) =>
+                            updateDraft("action", e.target.value)
                           }
                         />
                       </label>
@@ -784,14 +560,14 @@ export default function SummaryPage() {
                     <span className="form-label">Rows per page</span>
                     <select
                       className="app-select"
-                      value={filters.page_size}
-                      onChange={(event) =>
-                        updateFilter("page_size", Number(event.target.value))
+                      value={draftFilters.page_size}
+                      onChange={(e) =>
+                        updateDraft("page_size", Number(e.target.value))
                       }
                     >
-                      {PAGE_SIZE_OPTIONS.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
+                      {PAGE_SIZE_OPTIONS.map((v) => (
+                        <option key={v} value={v}>
+                          {v}
                         </option>
                       ))}
                     </select>
@@ -801,203 +577,228 @@ export default function SummaryPage() {
                 <div className="section-actions summary-panel-actions">
                   <button
                     type="button"
-                    className="secondary-button"
-                    onClick={() =>
-                      setFilters((previous) => ({
-                        ...previous,
-                        date_from: `${getLocalDateValue().slice(0, 7)}-01`,
-                        date_to: getLocalDateValue(),
-                        page: 1,
-                      }))
-                    }
+                    className="primary-button"
+                    onClick={handleGenerate}
+                    disabled={isFetching}
                   >
-                    This Month
+                    {isFetching ? "Generating…" : "Generate Report"}
                   </button>
-
                   <button
                     type="button"
                     className="ghost-button"
                     onClick={handleReset}
                   >
-                    Reset Filters
+                    Reset
                   </button>
                 </div>
               </section>
 
-              <section className="section-card section-card--padded">
-                <p className="section-kicker">Export</p>
+              {/* Export — only after report generated */}
+              {data && (
+                <section className="section-card section-card--padded">
+                  <p className="section-kicker">Export</p>
+                  <div className="summary-export-stack">
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={handlePrint}
+                    >
+                      Print / Save PDF
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() =>
+                        downloadCsv(columns, rows, `${fileBase}.csv`)
+                      }
+                    >
+                      Download CSV
+                    </button>
+                  </div>
+                  <p className="summary-note">
+                    Choose <strong>Save as PDF</strong> in the print dialog for
+                    a clean export.
+                  </p>
+                </section>
+              )}
 
-                <div className="summary-export-stack">
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={handlePrint}
-                    disabled={!data}
-                  >
-                    Print Report
-                  </button>
-
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={handlePrint}
-                    disabled={!data}
-                  >
-                    Save as PDF
-                  </button>
-
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={handleDownloadCsv}
-                    disabled={!data}
-                  >
-                    Download CSV
-                  </button>
-
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={handleDownloadJson}
-                    disabled={!data}
-                  >
-                    Download JSON
-                  </button>
-                </div>
-
-                <p className="summary-note">
-                  The PDF action uses your browser print dialog. Choose
-                  <strong> Save as PDF</strong> there for a clean export.
-                </p>
-              </section>
-
-              <section className="section-card section-card--padded">
-                <p className="section-kicker">Snapshot</p>
-                <SummaryMetricCards items={metrics} />
-              </section>
+              {/* Metrics — only after report generated */}
+              {data && (
+                <section className="section-card section-card--padded">
+                  <p className="section-kicker">Snapshot</p>
+                  <MetricCards items={metrics} />
+                </section>
+              )}
             </aside>
 
+            {/* ── Report area ── */}
             <section className="summary-main">
-              {!shouldLoadSummary && (
-                <SummaryStateCard
-                  title="Pick a party to build the statement"
-                  copy="Single-party reports stay empty until a party is selected from the filter panel."
-                />
+              {!activeFilters && (
+                <div className="section-card section-card--padded summary-state-card">
+                  <h2 className="summary-state-card__title">
+                    No report generated yet
+                  </h2>
+                  <p className="summary-state-card__copy">
+                    Set your filters and click Generate Report.
+                  </p>
+                </div>
               )}
 
-              {shouldLoadSummary && isLoading && !data && (
-                <SummaryStateCard
-                  title="Building your report"
-                  copy="Pulling the latest summary rows and totals for the selected filters."
-                />
+              {activeFilters && isLoading && !data && (
+                <div className="section-card section-card--padded summary-state-card">
+                  <h2 className="summary-state-card__title">
+                    Building your report…
+                  </h2>
+                </div>
               )}
 
-              {shouldLoadSummary && isError && !data && (
-                <SummaryStateCard
-                  title="Report could not be loaded"
-                  copy={error?.message || "Please try again with different filters."}
-                />
+              {activeFilters && isError && !data && (
+                <div className="section-card section-card--padded summary-state-card">
+                  <h2 className="summary-state-card__title">
+                    Could not load report
+                  </h2>
+                  <p className="summary-state-card__copy">
+                    {error?.message || "Please try different filters."}
+                  </p>
+                </div>
               )}
 
-              {shouldLoadSummary && data && (
+              {activeFilters && data && (
                 <>
                   <article
                     ref={reportRef}
                     className="section-card section-card--padded summary-report"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      minHeight: "70vh",
+                    }}
                   >
-                    <div className="summary-report__header">
-                      <div className="summary-report__recipient">
-                        <span className="summary-report__muted">To,</span>
-                        <strong>{getScopeLabel(filters, selectedParty)}</strong>
-                      </div>
-
-                      <div className="summary-report__date-block">
-                        <span className="summary-report__muted">Date</span>
-                        <strong>{formatStatementDate()}</strong>
-                      </div>
+                    {/* Report title */}
+                    <div
+                      style={{
+                        marginBottom: "1.5rem",
+                        borderBottom: "2px solid #1e3a5f",
+                        paddingBottom: "1rem",
+                      }}
+                    >
+                      <h2
+                        style={{
+                          margin: 0,
+                          textAlign: "center",
+                          fontSize: "1rem",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--heading)",
+                        }}
+                      >
+                        {typeMeta.subject}
+                      </h2>
+                      <p
+                        style={{
+                          margin: "0.5rem 0 0",
+                          textAlign: "center",
+                          color: "var(--text-muted)",
+                          fontSize: "0.88rem",
+                        }}
+                      >
+                        {getPeriodCaption(
+                          activeFilters.date_from,
+                          activeFilters.date_to,
+                        )}
+                        {" · "}
+                        {getScopeLabel(activeFilters, activeParty)}
+                      </p>
                     </div>
 
-                    <p className="summary-report__subject">
-                      Sub: {typeMeta.subject}
-                    </p>
-
-                    <div className="summary-report__headline">
-                      <h2>{`${typeMeta.label} ${getHeadingPeriod(
-                        filters.date_from,
-                        filters.date_to,
-                      )}`}</h2>
-                      <p>{getPeriodCaption(filters.date_from, filters.date_to)}</p>
-                    </div>
-
-                    <div className="summary-report__narrative">
-                      {narrativeRows.map((row) => (
-                        <p key={row.label}>
-                          <span className="summary-report__line-label">
-                            {row.label}:
-                          </span>{" "}
-                          {row.value}
-                        </p>
-                      ))}
-                    </div>
-
-                    {filters.type === "record" && (
-                      <div className="summary-service-breakdown">
-                        <div className="summary-service-breakdown__header">
-                          <h3>Service-wise pieces</h3>
-                          <span>{serviceBreakdown.length} service buckets</span>
-                        </div>
-
-                        {serviceBreakdown.length ? (
+                    {/* Service breakdown for records */}
+                    {activeFilters.type === "record" &&
+                      serviceBreakdown.length > 0 && (
+                        <div style={{ marginBottom: "1rem" }}>
                           <div className="summary-service-breakdown__grid">
-                            {serviceBreakdown.map((service) => (
+                            {serviceBreakdown.map((s) => (
                               <div
-                                key={
-                                  service.service_type__type_of_work || "service"
-                                }
+                                key={s.service_type__type_of_work || "s"}
                                 className="summary-service-pill"
                               >
                                 <strong>
-                                  {service.service_type__type_of_work ||
-                                    "Unknown service"}
+                                  {s.service_type__type_of_work || "Unknown"}
                                 </strong>
-                                <span>{service.total_pcs ?? 0} pcs</span>
+                                <span>{s.total_pcs ?? 0} pcs</span>
                               </div>
                             ))}
                           </div>
-                        ) : (
-                          <p className="summary-note summary-note--tight">
-                            No service totals are available for this record range.
-                          </p>
-                        )}
-                      </div>
-                    )}
+                        </div>
+                      )}
 
-                    <div className="summary-report__meta-strip">
+                    {/* Row count strip */}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "1rem",
+                        marginBottom: "0.75rem",
+                        fontSize: "0.82rem",
+                        color: "var(--text-muted)",
+                      }}
+                    >
                       <span>
-                        Showing {rows.length} row{rows.length === 1 ? "" : "s"}
+                        Showing {rows.length} of {paginationInfo.total} records
                       </span>
-                      <span>Total available: {paginationInfo.total}</span>
                       <span>
-                        Page {paginationInfo.currentPage} of{" "}
+                        Page {paginationInfo.currentPage} /{" "}
                         {paginationInfo.totalPages}
                       </span>
                     </div>
 
-                    <SummaryTable columns={columns} rows={rows} />
+                    {/* Table */}
+                    <ReportTable columns={columns} rows={rows} />
 
-                    <div className="summary-report__footer">
-                      <span>Generated from Hallmark Manager</span>
+                    {/* Footer — pushed to bottom of page */}
+                    <div
+                      style={{
+                        marginTop: "auto",
+                        paddingTop: "2rem",
+                        borderTop: "1px solid var(--border)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-end",
+                        fontSize: "0.84rem",
+                        color: "var(--text-muted)",
+                      }}
+                    >
                       <span>
-                        Statement prepared on {formatStatementDate(new Date())}
+                        Generated on {formatStatementDate(new Date())}
                       </span>
+                      <div style={{ textAlign: "center" }}>
+                        <div
+                          style={{
+                            width: "180px",
+                            borderBottom: "1.5px solid var(--heading)",
+                            marginBottom: "0.35rem",
+                          }}
+                        />
+                        <span
+                          style={{
+                            color: "var(--heading)",
+                            fontWeight: 600,
+                            fontSize: "0.82rem",
+                          }}
+                        >
+                          Authorized Signatory
+                        </span>
+                      </div>
                     </div>
                   </article>
 
-                  <PaginationControls
-                    page={paginationInfo.currentPage}
-                    totalPages={paginationInfo.totalPages}
-                    onPageChange={handlePageChange}
-                  />
+                  {/* Pagination */}
+                  <div className="no-print">
+                    <PaginationControls
+                      page={paginationInfo.currentPage}
+                      totalPages={paginationInfo.totalPages}
+                      onPageChange={handlePageChange}
+                    />
+                  </div>
                 </>
               )}
             </section>

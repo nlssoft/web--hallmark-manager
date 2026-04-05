@@ -315,12 +315,12 @@ class PaymentService:
         )
         for ledger in in_qs:
             ledger.delete()
-
+    
     @staticmethod
     def sync_pending_request_amounts_for_party(party):
         pending_requests = Payment_Request.objects.filter(
             status='P',
-            party=party
+            record__party=party  # 👈 was party=party
         ).distinct()
 
         for pr in pending_requests:
@@ -328,7 +328,7 @@ class PaymentService:
                 r.remaining_amount for r in pr.record.all()
             )
             pr.save(update_fields=['requested_amount'])
-
+    
     @staticmethod
     def create_payment(serializer):
         payment = serializer.save()

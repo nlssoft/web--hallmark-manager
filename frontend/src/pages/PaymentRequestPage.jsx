@@ -143,6 +143,7 @@ function CreateForm({ onSuccess }) {
                     { label: "Rate", value: `₹${record.rate}` },
                     { label: "Pcs", value: record.pcs },
                     { label: "Amount", value: `₹${record.amount}` },
+                    { label: "Discount", value: `₹${record.discount}` },
                     { label: "Paid", value: `₹${record.paid_amount}` },
                     {
                       label: "Due",
@@ -248,15 +249,17 @@ function RequestList({ isAdmin }) {
               {/* Top row */}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  {isAdmin && (
-                    <p className="mb-0.5 text-xs font-medium text-slate-500">
-                      {req.created_by?.username}
-                    </p>
-                  )}
                   <p className="truncate text-sm font-semibold text-slate-900">
-                    {req.address}
+                    {req.created_by?.username}
                   </p>
-                  <p className="truncate text-xs text-slate-500">{req.email}</p>
+                  <p className="truncate text-xs text-slate-500">
+                    {req.created_by?.address}
+                  </p>
+                  {/* Show party count */}
+                  <p className="truncate text-xs text-slate-400">
+                    {req.parties?.length ?? 0}{" "}
+                    {req.parties?.length === 1 ? "party" : "parties"}
+                  </p>
                 </div>
                 <span className={`shrink-0 ${statusClass(req.status)}`}>
                   {statusLabel(req.status)}

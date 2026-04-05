@@ -1,25 +1,47 @@
-import { useState } from "react";
-import api from "../api/axios";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { createApiError, applyServerFormErrors } from "../api/error";
 
 function LoginPage() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const navigate = useNavigate();
   const { setUser } = useAuth();
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm();
 
+  async function onSubmit(data) {
     try {
-      await api.post("/auth/login/", { username, password });
+      await api.post("/auth/login/", data);
       const profile = await api.get("/auth/profile/me/");
       setUser(profile.data);
       navigate("/dashboard");
     } catch (err) {
-      setError("Invalid username or password");
+      const apiError = createApiError(err);
+
+      // Humanize in BOTH places
+      if (
+        apiError.message === "invalid credentials" ||
+        apiError.fieldErrors?.error === "invalid credentials"
+      ) {
+        const humanMessage =
+          "Incorrect username or password. Please try again.";
+        apiError.message = humanMessage;
+        if (apiError.fieldErrors) {
+          apiError.fieldErrors.error = humanMessage;
+        }
+      }
+
+      applyServerFormErrors(
+        apiError,
+        setError,
+        "Something went wrong. Please try again.",
+      );
     }
   }
 
@@ -35,9 +57,13 @@ function LoginPage() {
           </p>
         </div>
 
-        {error && <p className="field-error mb-4">{error}</p>}
+        {errors.root?.serverError && (
+          <p className="field-error" style={{ marginBottom: "0.5rem" }}>
+            {errors.root.serverError.message}
+          </p>
+        )}
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
           <div className="form-field">
             <label className="form-label" htmlFor="username">
               Username
@@ -45,10 +71,12 @@ function LoginPage() {
             <input
               id="username"
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="app-input"
+              className={`app-input${errors.username ? " app-input--error" : ""}`}
+              {...register("username", { required: "Username is required" })}
             />
+            {errors.username && (
+              <p className="field-error">{errors.username.message}</p>
+            )}
           </div>
 
           <div className="form-field">
@@ -58,14 +86,20 @@ function LoginPage() {
             <input
               id="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="app-input"
+              className={`app-input${errors.password ? " app-input--error" : ""}`}
+              {...register("password", { required: "Password is required" })}
             />
+            {errors.password && (
+              <p className="field-error">{errors.password.message}</p>
+            )}
           </div>
 
-          <button type="submit" className="primary-button w-full">
-            Sign in
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="primary-button w-full"
+          >
+            {isSubmitting ? "Signing in..." : "Sign in"}
           </button>
 
           <button
@@ -74,6 +108,14 @@ function LoginPage() {
             className="page-link mx-auto"
           >
             Forgot your password?
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/register")}
+            className="page-link mx-auto"
+          >
+            Don't have an account? Create one
           </button>
         </form>
       </div>

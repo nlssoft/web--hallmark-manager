@@ -557,17 +557,17 @@ class PaymentRequestviewset(ModelViewSet):
     
     def get_queryset(self):
         if self.request.user.parent:
-            qs = Payment_Request.objects.filter(
-                created_by=self.request.user)
-        else:                              
-            qs = Payment_Request.objects.filter(
-                created_by__parent=self.request.user)
+            qs = Payment_Request.objects.filter(created_by=self.request.user)
+        else:
+            qs = Payment_Request.objects.filter(created_by__parent=self.request.user)
 
         status = self.request.query_params.get('status')
         if status:
             qs = qs.filter(status=status)
 
-        return qs.select_related('party', 'created_by').prefetch_related('record')
+        return qs.select_related('created_by').prefetch_related(  # 👈 remove 'party'
+            'record__party', 'record__service_type'
+        )
 
     def get_serializer_class(self):
 
@@ -626,7 +626,7 @@ class PaymentRequestviewset(ModelViewSet):
 
         pending_ids = Payment_Request.objects.filter(
             status='P',
-            party__user=owner
+            record__party__assigned_to=user
         ).values_list('record__id', flat=True)
 
         qs = base_qs.exclude(
@@ -638,60 +638,54 @@ class PaymentRequestviewset(ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-
         if request.user.parent:
             raise PermissionDenied('Only Admin can approve request.')
 
         with transaction.atomic():
             pr = Payment_Request.objects.select_for_update().get(pk=pk)
 
-            if pr.party.user != request.user:
+            # verify all records belong to this admin
+            if pr.record.exclude(party__user=request.user).exists():
                 raise PermissionDenied('Invalid record.')
 
             if pr.status != 'P':
-                return Response(
-                    {"detail": "Already processed."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"detail": "Already processed."}, 
+                            status=status.HTTP_400_BAD_REQUEST)
 
-            payment = Payment.objects.create(
-                party=pr.party,
-                amount=pr.requested_amount
-            )
+            # group records by party, create one payment per party
+            grouped = defaultdict(list)
+            for record in pr.record.select_related('party').all():
+                grouped[record.party].append(record)
 
-            PaymentService.allocate_payment(payment)
-            PaymentService.sync_pending_request_amounts_for_party(pr.party)
+            for party, records in grouped.items():
+                amount = sum(r.remaining_amount for r in records)
+                payment = Payment.objects.create(party=party, amount=amount)
+                PaymentService.allocate_payment(payment)
+                PaymentService.sync_pending_request_amounts_for_party(party)
 
             pr.status = 'A'
             pr.save()
             return Response({"status": "approved"}, status=status.HTTP_200_OK)
-
+    
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
-
         pr = self.get_object()
 
-        # Only main account
         if request.user.parent:
             raise PermissionDenied("Only main account can reject")
 
-        # Must belong to this main account
-        if pr.party.user != request.user:
+        # verify records belong to this admin
+        if pr.record.exclude(party__user=request.user).exists():
             raise PermissionDenied("Not your request")
 
-        # Only pending can be rejected
         if pr.status != 'P':
-            return Response(
-                {"detail": "Already processed."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        pr.status = "R"
+            return Response({"detail": "Already processed."}, 
+                        status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         pr.rejected_reason = serializer.validated_data.get("reason", "")
-
+        pr.status = "R"
         pr.save()
 
         return Response({"status": "rejected"})
