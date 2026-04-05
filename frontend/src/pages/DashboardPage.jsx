@@ -2,6 +2,7 @@ import DashboardCard from "../components/DashboardCard";
 import Navbar from "../components/Navbar";
 
 const cards = [
+  { title: "Payment Request", path: "/payment-request" },
   { title: "Parties", path: "/parties" },
   { title: "Service Type", path: "/service-type" },
   { title: "Work Rate", path: "/work-rate" },
@@ -11,7 +12,6 @@ const cards = [
   { title: "Audit", path: "/audit" },
   { title: "Advance Ledger", path: "/advance-ledger" },
   { title: "Sub User", path: "/sub-user" },
-  { title: "Payment Request", path: "/payment-request" },
 ];
 
 function DashboardPage() {
@@ -22,11 +22,7 @@ function DashboardPage() {
       <main className="content-shell stack-layout">
         <section className="section-card section-card--padded">
           <p className="section-kicker">Dashboard</p>
-          <h1 className="section-title">Everything in one clean workspace</h1>
-          <p className="section-copy">
-            Open the section you need and manage records, parties, rates, and
-            users from a consistent white interface.
-          </p>
+          <h1 className="section-cppy">Everything in one clean workspace</h1>
         </section>
 
         <div className="dashboard-grid">

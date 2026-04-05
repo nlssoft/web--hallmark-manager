@@ -282,6 +282,7 @@ function RecordDetailPage() {
 
       <GoBackButton
         to="/record/"
+        label={"Go back To Records"}
         disabled={updateMutation.isPending || deleteMutation.isPending}
       />
 

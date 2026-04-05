@@ -218,6 +218,7 @@ function WorkRateDetailPage() {
 
       <GoBackButton
         to="/work-rate/"
+        label={"Go back To Work Rates"}
         disabled={updateMutation.isPending || deleteMutation.isPending}
       />
 

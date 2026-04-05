@@ -237,6 +237,7 @@ function PartyDetailPage() {
 
       <GoBackButton
         to="/parties/"
+        label={"Go back To Parties"}
         disabled={updateMutation.isPending || deleteMutation.isPending}
       />
 

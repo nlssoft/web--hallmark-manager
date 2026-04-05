@@ -9,7 +9,7 @@ export default function ListPageLayout({ form, list, filter }) {
         <div className="stack-layout">
           {filter && (
             <section className="section-card section-card--padded">
-              <p className="section-kicker">Filter</p>
+              <p className="section-kicker">Filters</p>
               {filter}
             </section>
           )}
@@ -18,14 +18,12 @@ export default function ListPageLayout({ form, list, filter }) {
             <div className="list-page-grid">
               {form && (
                 <section className="list-page-form section-card section-card--padded">
-                  <p className="section-kicker">Form</p>
                   {form}
                 </section>
               )}
 
               {list && (
                 <section className="list-page-list section-card section-card--padded">
-                  <p className="section-kicker">List</p>
                   {list}
                 </section>
               )}

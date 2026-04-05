@@ -170,20 +170,8 @@ class AdvanceLedgerFilter(FilterSet):
         lookup_expr='icontains'
     )
 
-    payment = filters.NumberFilter(
-        field_name='payment__id'
-    )
-
-    record = filters.NumberFilter(
-        field_name='record__id'
-    )
-
     created_at_range = filters.DateFromToRangeFilter(
         field_name='created_at'
-    )
-
-    payment_out = filters.NumberFilter(
-        method='filter_payment_out'
     )
 
     class Meta:
@@ -195,11 +183,11 @@ class AdvanceLedgerFilter(FilterSet):
             'created_at_range',
         ]
 
-    def filter_payment_out(self, queryset, name, value):
-        return queryset.filter(
-            payment_id=value,
-            direction='OUT'
-        )
+    # def filter_payment_out(self, queryset, name, value):
+    #     return queryset.filter(
+    #         payment_id=value,
+    #         direction='OUT'
+    #     )
 
 
 class AuditLogFilter(FilterSet):
@@ -232,15 +220,11 @@ class AuditLogFilter(FilterSet):
         field_name='created_at'
     )
 
-    object_id = filters.NumberFilter(
-        field_name='object_id'
-    )
 
     class Meta:
         model = AuditLog
         fields = [
             'action',
-            'object_id',
             'created_at_range',
             'model_name'
         ]

@@ -23,7 +23,7 @@ function ServiceTypePage() {
       <main className="content-shell stack-layout">
         <section className="section-card section-card--padded section-card--narrow">
           <p className="section-kicker">Services</p>
-          <h1 className="section-title">Service types at a glance</h1>
+
           <p className="section-copy">
             Review available service categories and see how often each one has
             been used this month.

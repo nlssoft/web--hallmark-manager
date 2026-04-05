@@ -222,7 +222,6 @@ class AuditLog(models.Model):
 class Payment_Request(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    party = models.ForeignKey(Party, on_delete=models.CASCADE)
     record = models.ManyToManyField(Record)
     requested_amount = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)

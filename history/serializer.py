@@ -4,6 +4,8 @@ from .models import *
 from django.contrib.auth import get_user_model
 from django.db.models import F, ExpressionWrapper, DecimalField, Exists, OuterRef
 from  core.serializers import UserMiniSerializer
+from .utils.audit import calculate_changes
+
 
 class PartySerializer(serializers.ModelSerializer):
 
@@ -349,18 +351,36 @@ class PaymentUpdateSerializer(BasePaymentSerializer):
 
 
 class AdvanceLedgerSerializer(serializers.ModelSerializer):
+    party = PartyMiniSerializer(read_only=True)
+    payment = PaymentSerializer(read_only=True)
+    record = RecordSerializer(read_only=True)
+
     class Meta:
         model = AdvanceLedger
-        fields = ['id', 'party__logo', 'party__first_name', 'party__last_name', 'payment__payment_date',
-                  'payment__amount', 'record__record_date', 'record__pcs', 'record__service_type__type__of_work',
-                  'amount', 'direction', 'created_at']
+        fields = ['id', 'party', 'payment', 'record',
+                  'amount', 'remaining_amount', 'direction', 'created_at']
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
+    changes = serializers.SerializerMethodField()
+
     class Meta:
         model = AuditLog
-        fields = ['object_id', 'model_name', 'action',
-                  'before', 'after', 'reason', 'created_at', 'party__first_name', 'party__last_name']
+        fields = [
+            'id',
+            'model_name',
+            'action',
+            'changes',
+            'before',
+            'after',
+            'reason',
+            'created_at',
+        ]
+
+    def get_changes(self, obj):
+        if obj.action == "UPDATE":
+            return calculate_changes(obj.before or {}, obj.after or {})
+        return None
 
 
 class BasePaymentRequestSerilizer(serializers.ModelSerializer):
@@ -389,16 +409,25 @@ class BasePaymentRequestSerilizer(serializers.ModelSerializer):
 
         return attrs
 
-
 class PaymentRequestSerializer(BasePaymentRequestSerilizer):
+    created_by = UserMiniSerializer(read_only=True)
+    record = RecordSerializer(read_only=True, many=True)
+    # derive parties from records
+    parties = serializers.SerializerMethodField()
+
+    def get_parties(self, obj):
+        # distinct parties from all records
+        parties = Party.objects.filter(
+            record__payment_request=obj
+        ).distinct()
+        return PartyMiniSerializer(parties, many=True).data
 
     class Meta:
         model = Payment_Request
-        fields = ['id', 'created_by', 'record',
-                  'requested_amount', 'created_at', 'status']
+        fields = ['id', 'created_by', 'record', 'parties',
+                  'requested_amount', 'created_at', 'status', 'rejected_reason']
         read_only_fields = fields
-
-
+        
 class PaymentRequestCreateSerializer(BasePaymentRequestSerilizer):
 
     class Meta:

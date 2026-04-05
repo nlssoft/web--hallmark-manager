@@ -216,6 +216,7 @@ function PaymentDetailPage() {
 
       <GoBackButton
         to="/payment/"
+        label={"Go back To Payments"}
         disabled={updateMutation.isPending || deleteMutation.isPending}
       />
 

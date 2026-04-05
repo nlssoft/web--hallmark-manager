@@ -222,6 +222,7 @@ function SubUserDetailPage() {
 
       <GoBackButton
         to="/sub-user/"
+        label={"Go back To Users"}
         disabled={updateMutation.isPending || deleteMutation.isPending}
       />
 

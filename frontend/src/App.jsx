@@ -1,6 +1,5 @@
 import { Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/LoginPage.jsx";
-import Dashboard from "./pages/DashboardPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import PartiesPage from "./pages/PartiesPage.jsx";
@@ -17,6 +16,11 @@ import RecordDetailPage from "./pages/RecordDetailPage.jsx";
 import PaymentPage from "./pages/PaymentPage.jsx";
 import PaymentDetailPage from "./pages/PaymentDetailPage.jsx";
 import SummaryPage from "./pages/SummaryPage.jsx";
+import AuditPage from "./pages/AuditLogPage.jsx";
+import AuditDetailPage from "./pages/AuditDetailPage.jsx";
+import AdvanceLedgerPage from "./pages/AdvanceLedgerPage.jsx";
+import AdvanceLedgerDetailPage from "./pages/AdvanceLedgerDetailPage.jsx";
+import PaymentRequestPage from "./pages/PaymentRequestPage.jsx";
 
 function App() {
   return (
@@ -133,6 +137,47 @@ function App() {
         element={
           <ProtectedRoute>
             <SummaryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/audit"
+        element={
+          <ProtectedRoute>
+            <AuditPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/audit/:id"
+        element={
+          <ProtectedRoute>
+            <AuditDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/advance-ledger/"
+        element={
+          <ProtectedRoute>
+            <AdvanceLedgerPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/advance-ledger/:id"
+        element={
+          <ProtectedRoute>
+            <AdvanceLedgerDetailPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/payment-request/"
+        element={
+          <ProtectedRoute>
+            <PaymentRequestPage />
           </ProtectedRoute>
         }
       />

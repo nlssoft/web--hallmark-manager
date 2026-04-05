@@ -116,7 +116,7 @@ class RecordViewSet(ModelViewSet):
         return RecordSerializer
 
     def get_queryset(self):
-        if self.request.user.parent:
+        if self.request.user.parent: 
             raise PermissionDenied('Unauthorized access.')
 
         return Record.objects.filter(
@@ -516,6 +516,11 @@ class SummaryView(APIView):
             model = params.get("model")
             action = params.get("action")
 
+            if date_from:
+                qs = qs.filter(created_at__date__gte=date_from)
+            if date_to:
+                qs = qs.filter(created_at__date__lte=date_to)
+
             if model:
                 qs = qs.filter(model_name__iexact=model)
             if action:
@@ -549,18 +554,20 @@ class PaymentRequestviewset(ModelViewSet):
     serializer_class = PaymentRequestSerializer
     permission_classes = [IsAuthenticated, PaymentRequestLimitastion]
     pagination_class = NormalPagination
-
+    
     def get_queryset(self):
         if self.request.user.parent:
-            return Payment_Request.objects.filter(
-                created_by=self.request.user).select_related(
-                    'party', 'created_by').prefetch_related(
-                        'record').exclude(
-                            status='A')
-        return Payment_Request.objects.filter(
-            created_by__parent=self.request.user).select_related(
-                'party', 'created_by').prefetch_related(
-                    'record')
+            qs = Payment_Request.objects.filter(
+                created_by=self.request.user)
+        else:                              
+            qs = Payment_Request.objects.filter(
+                created_by__parent=self.request.user)
+
+        status = self.request.query_params.get('status')
+        if status:
+            qs = qs.filter(status=status)
+
+        return qs.select_related('party', 'created_by').prefetch_related('record')
 
     def get_serializer_class(self):
 
@@ -578,42 +585,56 @@ class PaymentRequestviewset(ModelViewSet):
 
         else:
             return PaymentRequestSerializer
-
+    
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = request.user
         records = serializer.validated_data['record']
-
-        grouped = defaultdict(list)
-        for record in records:
-            grouped[record.party].append(record)
-
-        created_request = []
+        total = sum(r.remaining_amount for r in records)
 
         with transaction.atomic():
-            for party, party_record in grouped.items():
-                total = sum(r.remaining_amount for r in party_record)
-
-                pr = Payment_Request.objects.create(
-                    created_by=user,
-                    party=party,
-                    requested_amount=total
-                )
-
-                pr.record.set(party_record)
-                created_request.append(pr)
-
-            response_serializer = PaymentRequestSerializer(
-                created_request,
-                many=True
+            pr = Payment_Request.objects.create(
+                created_by=request.user,
+                requested_amount=total
             )
+            pr.record.set(records)
 
-            return Response(
-                response_serializer.data,
-                status=status.HTTP_201_CREATED
+        return Response(
+            PaymentRequestSerializer(pr).data,
+            status=status.HTTP_201_CREATED
+        )
+
+
+    # for records
+    @action(detail=False, methods=['get'])
+    def eligible_records(self, request):
+        if not request.user.parent:
+            raise PermissionDenied('Only sub-users can fetch eligible records.')
+
+        user = request.user
+        owner = user.parent
+
+        base_qs = Record.objects.filter(
+            party__assigned_to=user
+        ).annotate(
+            not_paid=ExpressionWrapper(
+                (F('rate') * F('pcs')) - F('discount') - F('paid_amount'),
+                output_field=DecimalField()
             )
+        ).filter(not_paid__gt=0)
+
+        pending_ids = Payment_Request.objects.filter(
+            status='P',
+            party__user=owner
+        ).values_list('record__id', flat=True)
+
+        qs = base_qs.exclude(
+            id__in=pending_ids
+        ).select_related('party', 'service_type').distinct()
+
+        serializer = RecordSerializer(qs, many=True)
+        return Response({'results': serializer.data})
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
@@ -655,7 +676,7 @@ class PaymentRequestviewset(ModelViewSet):
             raise PermissionDenied("Only main account can reject")
 
         # Must belong to this main account
-        if pr.party.owner != request.user:
+        if pr.party.user != request.user:
             raise PermissionDenied("Not your request")
 
         # Only pending can be rejected
