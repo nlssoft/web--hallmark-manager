@@ -6,16 +6,21 @@ from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# settings which will be used by environment varibles
 env = environ.Env(DEBUG=(bool, 'false'))
-environ.Env.read_env(BASE_DIR/'.env')
+environ.Env.read_env(BASE_DIR / '.env')
 
 
-SECRET_KEY = env('SECRET_KEY')
+# django settings
+DEBUG = env.bool('DEBUG', default=False)
 
-
-DEBUG = env('DEBUG')
+if DEBUG:
+    SECRET_KEY = env('SECRET_KEY', default='dev-only-key')
+else:
+    SECRET_KEY = env('SECRET_KEY')  
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
+
 
 
 # Application definition
@@ -32,15 +37,14 @@ INSTALLED_APPS = [
     'djoser',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
-    "debug_toolbar",
     'core',
     'history',
 
 ]
 
 MIDDLEWARE = [
+
     'corsheaders.middleware.CorsMiddleware',
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -74,6 +78,7 @@ WSGI_APPLICATION = 'web.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# what about db? 
 DATABASES = {
     'default': env.db()
 }
@@ -181,13 +186,17 @@ AUTH_USER_MODEL = 'core.User'
 CSRF_TRUSTED_ORIGINS = ['http://localhost:5173']
 
 
-
+if DEBUG:
+    INSTALLED_APPS += ["debug_toolbar"]
+    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
 # email confige
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = env('EMAIL_HOST')
-EMAIL_PORT = env.int('EMAIL_PORT')
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+EMAIL_HOST = env('EMAIL_HOST', default='')
+EMAIL_PORT = env.int('EMAIL_PORT', default=0)
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@example.com')
+
+# because i'm using smtp django service 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
