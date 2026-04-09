@@ -5,6 +5,7 @@ import { loadParties } from "../api/parties.js";
 import { getSummary } from "../api/summary.js";
 import Navbar from "../components/Navbar.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
+import useTitle from "../utils/useTitle.js";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -314,6 +315,8 @@ function ReportTable({ columns, rows }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SummaryPage() {
+  useTitle("Summary");
+
   const [draftFilters, setDraftFilters] = useState(createInitialFilters);
   const [activeFilters, setActiveFilters] = useState(null);
   const reportRef = useRef(null);

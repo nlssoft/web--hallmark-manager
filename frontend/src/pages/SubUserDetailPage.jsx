@@ -10,6 +10,7 @@ import {
 import { applyServerFormErrors } from "../api/error.js";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import useTitle from "../utils/useTitle.js";
 
 import GoBackButton from "../components/GoBackButton.jsx";
 import DetailPageLayout from "../components/DetailPageLayout.jsx";
@@ -102,6 +103,7 @@ function SubUserDetailPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  useTitle("Sub User Detail");
 
   const {
     control,

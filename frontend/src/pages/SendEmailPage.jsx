@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { sendEmail } from "../api/password";
 import GoBackButton from "../components/GoBackButton.jsx";
+import useTitle from "../utils/useTitle.js";
 
 function SendEmailPage() {
   const [email, setEmail] = useState("");
+  useTitle("Forgot Password");
 
   async function handleSubmit(e) {
     e.preventDefault();

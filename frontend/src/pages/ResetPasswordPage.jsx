@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { resetPassword } from "../api/password.js";
+import useTitle from "../utils/useTitle.js";
 
 function ResetPasswordPage() {
   const { uid, token } = useParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const navigate = useNavigate();
+  useTitle("Reset Password");
 
   async function handleSubmit(e) {
     e.preventDefault();

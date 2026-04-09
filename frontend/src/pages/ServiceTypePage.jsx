@@ -3,8 +3,11 @@ import { loadService } from "../api/serviceType";
 import Navbar from "../components/Navbar";
 import GoBackButton from "../components/GoBackButton.jsx";
 import EarlyReturn from "../components/EarlyReturns.jsx";
+import useTitle from "../utils/useTitle.js";
 
 function ServiceTypePage() {
+  useTitle("Service Types");
+
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["serviceType"],
     queryFn: loadService,

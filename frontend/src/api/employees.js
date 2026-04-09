@@ -1,10 +1,35 @@
 import api from "./axios";
 import { createApiError } from "./error";
 
+const EMPLOYEE_OPTIONS_PAGE_SIZE = 1000;
+
 export const loadEmployees = async (params = {}) => {
   try {
     const res = await api.get("/auth/employee/", { params });
     return res.data;
+  } catch (err) {
+    throw createApiError(err);
+  }
+};
+
+export const loadAllEmployees = async () => {
+  try {
+    const employees = [];
+    let page = 1;
+    let hasNextPage = true;
+
+    while (hasNextPage) {
+      const res = await api.get("/auth/employee/", {
+        params: { page, page_size: EMPLOYEE_OPTIONS_PAGE_SIZE },
+      });
+
+      const results = Array.isArray(res.data?.results) ? res.data.results : [];
+      employees.push(...results);
+      hasNextPage = Boolean(res.data?.next);
+      page += 1;
+    }
+
+    return employees;
   } catch (err) {
     throw createApiError(err);
   }

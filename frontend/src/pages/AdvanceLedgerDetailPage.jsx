@@ -4,6 +4,7 @@ import DetailPageLayout from "../components/DetailPageLayout.jsx";
 import EarlyReturn from "../components/EarlyReturns.jsx";
 import GoBackButton from "../components/GoBackButton.jsx";
 import { getAdvance } from "../api/advanceLedger.js";
+import useTitle from "../utils/useTitle.js";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,7 @@ function SnapshotTable({ rows }) {
 
 export default function AdvanceLedgerDetailPage() {
   const { id } = useParams();
+  useTitle("Advance Ledger Detail");
 
   const {
     data: entry,

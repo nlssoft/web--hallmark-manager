@@ -1,12 +1,14 @@
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth-context.js";
 import { createApiError, applyServerFormErrors } from "../api/error";
+import useTitle from "../utils/useTitle.js";
 
 function LoginPage() {
   const navigate = useNavigate();
   const { setUser } = useAuth();
+  useTitle("Login");
 
   const {
     register,
@@ -52,8 +54,7 @@ function LoginPage() {
           <p className="section-kicker">Welcome Back</p>
           <h1 className="auth-title">Sign in to Hallmark Manager</h1>
           <p className="auth-copy">
-            A lighter, cleaner workspace for records, parties, rates, and daily
-            admin tasks.
+            A lighter and cleaner workspace daily tasks.
           </p>
         </div>
 

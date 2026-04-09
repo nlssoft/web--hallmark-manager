@@ -45,7 +45,7 @@ class TestPaymentRequestAuth:
 
 @pytest.mark.django_db
 class TestPaymentRequestCreate:
-    def test_child_can_create_requests_grouped_by_party(self, api_client):
+    def test_child_can_create_request_with_records_from_multiple_parties(self, api_client):
         main = baker.make(settings.AUTH_USER_MODEL)
         child = baker.make(settings.AUTH_USER_MODEL, parent=main)
 
@@ -69,13 +69,11 @@ class TestPaymentRequestCreate:
 
         assert response.status_code == status.HTTP_201_CREATED
         created = response.data
-        assert len(created) == 2
-
-        amounts = sorted([Decimal(str(x["requested_amount"]))
-                         for x in created])
-        assert amounts == [Decimal("30.00"), Decimal("90.00")]
-
-        assert Payment_Request.objects.count() == 2
+        assert created["created_by"]["id"] == child.id
+        assert Decimal(str(created["requested_amount"])) == Decimal("120.00")
+        assert {item["id"] for item in created["record"]} == {r1.id, r2.id, r3.id}
+        assert {item["id"] for item in created["parties"]} == {party_a.id, party_b.id}
+        assert Payment_Request.objects.count() == 1
 
     def test_child_cannot_request_unassigned_party_record(self, api_client):
         main = baker.make(settings.AUTH_USER_MODEL)
@@ -111,7 +109,6 @@ class TestPaymentRequestApproveReject:
         pr = baker.make(
             Payment_Request,
             created_by=child,
-            party=party,
             requested_amount=Decimal("50.00"),
             status="P",
         )
@@ -132,8 +129,10 @@ class TestPaymentRequestApproveReject:
         child = baker.make(settings.AUTH_USER_MODEL, parent=main)
 
         party = baker.make(Party, user=main, assigned_to=child)
-        pr = baker.make(Payment_Request, created_by=child,
-                        party=party, requested_amount=50, status="P")
+        service = baker.make(Service_Type, user=main)
+        record = baker.make(Record, party=party, service_type=service, rate=10, pcs=5, paid_amount=0)
+        pr = baker.make(Payment_Request, created_by=child, requested_amount=50, status="P")
+        pr.record.add(record)
 
         api_client.force_authenticate(user=child)
         response = api_client.post(
@@ -146,8 +145,10 @@ class TestPaymentRequestApproveReject:
         child = baker.make(settings.AUTH_USER_MODEL, parent=main)
 
         party = baker.make(Party, user=main, assigned_to=child)
-        pr = baker.make(Payment_Request, created_by=child,
-                        party=party, requested_amount=50, status="P")
+        service = baker.make(Service_Type, user=main)
+        record = baker.make(Record, party=party, service_type=service, rate=10, pcs=5, paid_amount=0)
+        pr = baker.make(Payment_Request, created_by=child, requested_amount=50, status="P")
+        pr.record.add(record)
 
         api_client.force_authenticate(user=main)
         response = api_client.post(
@@ -179,7 +180,6 @@ class TestPaymentRequestUpdate:
         pr = baker.make(
             Payment_Request,
             created_by=child,
-            party=party,
             requested_amount=Decimal("80.00"),
             status="P",
         )
@@ -244,7 +244,7 @@ class TestPendingRequestRecalculationFromPaymentChanges:
             format="json",
         )
         assert create_resp.status_code == status.HTTP_201_CREATED
-        pr_id = create_resp.data[0]["id"]
+        pr_id = create_resp.data["id"]
 
         pr = Payment_Request.objects.get(id=pr_id)
         assert pr.requested_amount == Decimal("90.00")
@@ -302,7 +302,7 @@ class TestPendingRequestRecalculationFromPaymentChanges:
             format="json",
         )
         assert create_resp.status_code == status.HTTP_201_CREATED
-        pr_id = create_resp.data[0]["id"]
+        pr_id = create_resp.data["id"]
 
         pr = Payment_Request.objects.get(id=pr_id)
         assert pr.requested_amount == Decimal("90.00")

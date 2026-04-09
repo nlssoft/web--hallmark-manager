@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function AutoCompleteInput({
   id,
@@ -14,17 +14,14 @@ export default function AutoCompleteInput({
   isEditing = true,
 }) {
   const [search, setSearch] = useState("");
+  const [hasTyped, setHasTyped] = useState(false);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
 
-  useEffect(() => {
-    const selectedItem = options.find((item) => item.id === value);
-    setSearch(selectedItem ? selectedItem[labelKey] : "");
-
-    if (!isEditing) {
-      setOpen(false);
-    }
-  }, [value, options, labelKey, isEditing]);
+  const selectedItem = options.find((item) => item.id === value);
+  const selectedLabel = selectedItem ? selectedItem[labelKey] : "";
+  const activeSearch = hasTyped ? search : selectedLabel;
+  const displayValue = isEditing ? activeSearch : selectedLabel;
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -40,13 +37,14 @@ export default function AutoCompleteInput({
   }, []);
 
   const filtered = options.filter((item) =>
-    item[labelKey]?.toLowerCase().includes(search.toLowerCase()),
+    item[labelKey]?.toLowerCase().includes(activeSearch.toLowerCase()),
   );
 
   function handleSelect(item) {
     if (!isEditing) return;
     onChange(item.id);
-    setSearch(item[labelKey]);
+    setSearch("");
+    setHasTyped(false);
     setOpen(false);
   }
 
@@ -72,13 +70,17 @@ export default function AutoCompleteInput({
             disabled={!isEditing}
             className={inputClasses}
             placeholder={placeholder || "search..."}
-            value={search}
+            value={displayValue}
             onChange={(e) => {
               if (!isEditing) return;
               setSearch(e.target.value);
+              setHasTyped(true);
               setOpen(true);
             }}
-            onBlur={onBlur}
+            onBlur={(e) => {
+              setOpen(false);
+              onBlur?.(e);
+            }}
             onFocus={() => isEditing && setOpen(true)}
             autoComplete="off"
             autoCorrect="off"
@@ -91,7 +93,10 @@ export default function AutoCompleteInput({
               {filtered.map((item) => (
                 <div
                   key={item.id}
-                  onClick={() => handleSelect(item)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(item);
+                  }}
                   className="cursor-pointer px-4 py-3 transition-colors hover:bg-blue-50"
                 >
                   <div className="font-medium text-slate-900">

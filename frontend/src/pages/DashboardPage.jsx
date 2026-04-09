@@ -1,5 +1,6 @@
 import DashboardCard from "../components/DashboardCard";
 import Navbar from "../components/Navbar";
+import useTitle from "../utils/useTitle.js";
 
 const cards = [
   { title: "Payment Request", path: "/payment-request" },
@@ -15,6 +16,8 @@ const cards = [
 ];
 
 function DashboardPage() {
+  useTitle("Dashboard");
+
   return (
     <div className="page-shell">
       <Navbar />

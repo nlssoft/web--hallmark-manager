@@ -5,6 +5,7 @@ import { getAudit } from "../api/audit.js";
 import DetailPageLayout from "../components/DetailPageLayout.jsx";
 import EarlyReturn from "../components/EarlyReturns.jsx";
 import GoBackButton from "../components/GoBackButton.jsx";
+import useTitle from "../utils/useTitle.js";
 
 function formatDateTime(value) {
   if (!value) return "N/A";
@@ -280,6 +281,7 @@ function AuditSnapshotCard({ title, subtitle, data, emptyMessage }) {
 
 export default function AuditDetailPage() {
   const { id } = useParams();
+  useTitle("Audit Detail");
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["audit", id],

@@ -14,6 +14,7 @@ import ECSDButton from "../components/EditCancelSaveDelete.jsx";
 import ConfirmActionModal from "../components/ConfirmActionModal.jsx";
 import GoBackButton from "../components/GoBackButton.jsx";
 import EditableField from "../components/EditableField.jsx";
+import useTitle from "../utils/useTitle.js";
 
 function paymentToForm(p) {
   return {
@@ -77,6 +78,7 @@ function PaymentDetailPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  useTitle("Payment Detail");
 
   const detailFields = isEditing ? [...fields, reasonField] : fields;
 

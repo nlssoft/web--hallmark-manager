@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createParties, loadParties } from "../api/parties";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth-context.js";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { loadEmployees } from "../api/employees";
+import { loadAllEmployees } from "../api/employees";
+import useTitle from "../utils/useTitle.js";
 
 import FiltersBar from "../components/FilterBar";
 import PaginationControls from "../components/PaginationControls";
@@ -107,6 +108,7 @@ function PartiesPage() {
     last_name: "",
     logo: "",
   });
+  useTitle("Parties");
 
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -130,8 +132,8 @@ function PartiesPage() {
   });
 
   const { data: employees } = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => loadEmployees().then((res) => res.results),
+    queryKey: ["employees", "all"],
+    queryFn: loadAllEmployees,
   });
 
   const createMutation = useMutation({

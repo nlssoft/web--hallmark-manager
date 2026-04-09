@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth-context.js";
 import DetailPageLayout from "../components/DetailPageLayout.jsx";
 import EarlyReturn from "../components/EarlyReturns.jsx";
 import GoBackButton from "../components/GoBackButton.jsx";
+import useTitle from "../utils/useTitle.js";
+
 import {
   getRequest,
   approveRequest,
@@ -51,6 +53,14 @@ function InfoCell({ label, value }) {
   );
 }
 
+function formatDate(dt) {
+  return new Date(dt).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 // ─── group records by party ───────────────────────────────────────────────────
 
 function groupByParty(records) {
@@ -91,6 +101,7 @@ function RecordRow({ record, onRemove }) {
       </div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
         {[
+          { label: "Date", value: `${formatDate(record.record_date)}` },
           { label: "Rate", value: `₹${record.rate}` },
           { label: "Pcs", value: record.pcs },
           { label: "Amount", value: `₹${record.amount}` },
@@ -560,6 +571,7 @@ function SubUserView({ pr }) {
 export default function PaymentRequestDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
+  useTitle("Payment Request Detail");
 
   const {
     data: pr,

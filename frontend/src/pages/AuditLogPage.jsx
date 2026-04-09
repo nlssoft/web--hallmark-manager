@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import { loadAudit } from "../api/audit.js";
 import { formatDate } from "../utils/dateFormat.js";
+import useTitle from "../utils/useTitle.js";
 
 import FiltersBar from "../components/FilterBar.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
@@ -68,6 +69,7 @@ function AuditPage() {
     created_at_range_after: today,
     created_at_range_before: today,
   });
+  useTitle("Audit Log");
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;

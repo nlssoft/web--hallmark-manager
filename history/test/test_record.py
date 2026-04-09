@@ -54,8 +54,8 @@ class TestCreateRecord:
 
         response = api_client.post(
             reverse('record-list'), {
-                'party': party.id,
-                'service_type': service.id,
+                'party_id': party.id,
+                'service_type_id': service.id,
                 'rate': 55,
                 'pcs': 5,
                 'rate_mode': 'manual'
@@ -74,8 +74,8 @@ class TestCreateRecord:
 
         response = api_client.post(
             reverse('record-list'), {
-                'party': party.id,
-                'service_type': service.id,
+                'party_id': party.id,
+                'service_type_id': service.id,
                 'rate': 55,
                 'pcs': 6,
                 'rate_mode': 'manual'  # ✅ REQUIRED FIELD
@@ -227,8 +227,8 @@ class TestUinqueConditionsRecord:
 
         response = api_client.post(
             reverse('record-list'), {
-                'party': party.id,
-                'service_type': service.id,
+                'party_id': party.id,
+                'service_type_id': service.id,
                 'rate': -55.40,
                 'pcs': -6,
             }
@@ -282,8 +282,8 @@ class TestUinqueConditionsRecord:
         )
 
         response = api_client.post(reverse('record-list'), {
-            'party': party.id,
-            'service_type': service.id,
+            'party_id': party.id,
+            'service_type_id': service.id,
             'rate': 55,
             'pcs': 6,
             'rate_mode': 'manual'  # ✅ REQUIRED FIELD

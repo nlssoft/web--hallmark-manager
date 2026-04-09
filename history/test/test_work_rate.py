@@ -68,8 +68,8 @@ class TestCreateWork_rate:
 
         response = api_client.post(
             reverse('work-rate-list'), {
-                'party':party.id,
-                'service_type': service.id,
+                'party_id':party.id,
+                'service_type_id': service.id,
                 'rate': 55
             }
         )
@@ -92,8 +92,8 @@ class TestCreateWork_rate:
 
         response = api_client.post(
             reverse('work-rate-list'), {
-                'party':party.id,
-                'service_type': service.id,
+                'party_id':party.id,
+                'service_type_id': service.id,
                 'rate': 55
             }
         )
@@ -172,8 +172,8 @@ class TestDeleteWork_rate:
         api_client.force_authenticate(user=user)
 
         response = api_client.post(reverse('work-rate-list'), {
-            "party": party.id,
-            "service_type": service.id,
+            "party_id": party.id,
+            "service_type_id": service.id,
             "rate": -10
         })
 
@@ -273,8 +273,8 @@ class TestUinqueConditionsWork_rate:
 
         response = api_client.post(reverse(
                                         'work-rate-list'), {
-                                        "party": party.id,
-                                        'service_type': service.id, 
+                                        "party_id": party.id,
+                                        'service_type_id': service.id, 
                                         "rate": 100
                                         })
         

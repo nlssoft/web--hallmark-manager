@@ -15,6 +15,7 @@ import ECSDButton from "../components/EditCancelSaveDelete.jsx";
 import ConfirmActionModal from "../components/ConfirmActionModal.jsx";
 import GoBackButton from "../components/GoBackButton.jsx";
 import EditableField from "../components/EditableField.jsx";
+import useTitle from "../utils/useTitle.js";
 
 function recordToForm(r) {
   return {
@@ -133,6 +134,7 @@ function RecordDetailPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  useTitle("Record Detail");
 
   const detailFields = isEditing ? [...fields, reasonField] : fields;
 

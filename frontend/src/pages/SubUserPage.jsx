@@ -8,6 +8,7 @@ import PaginationControls from "../components/PaginationControls";
 import EarlyReturn from "../components/EarlyReturns";
 import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
 import ListPageLayout from "../components/ListPageLayout";
+import useTitle from "../utils/useTitle.js";
 
 const fields = [
   {
@@ -104,6 +105,7 @@ function SubUserPage() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const navigate = useNavigate();
+  useTitle("Sub Users");
 
   const {
     control,
@@ -115,8 +117,8 @@ function SubUserPage() {
   } = useForm({ defaultValues: defaultValues });
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["employees"],
-    queryFn: loadEmployees,
+    queryKey: ["employees", page],
+    queryFn: () => loadEmployees({ page }),
     placeholderData: (previousData) => previousData,
   });
 
@@ -144,7 +146,7 @@ function SubUserPage() {
       });
       return;
     }
-    const { confirmPassword, ...payload } = values;
+    const { confirmPassword: _confirmPassword, ...payload } = values;
     createMutation.mutate(payload);
   }
 

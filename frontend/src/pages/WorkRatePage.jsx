@@ -13,6 +13,7 @@ import PaginationControls from "../components/PaginationControls";
 import EarlyReturn from "../components/EarlyReturns";
 import ListPageLayout from "../components/ListPageLayout";
 import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
+import useTitle from "../utils/useTitle.js";
 
 const fields = [
   {
@@ -79,6 +80,7 @@ function WorkRatePage() {
     party__first_name: "",
     party__last_name: "",
   });
+  useTitle("Work Rates");
 
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);

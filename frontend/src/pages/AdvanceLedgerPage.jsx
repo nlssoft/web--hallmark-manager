@@ -6,6 +6,7 @@ import FiltersBar from "../components/FilterBar.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
 import EarlyReturn from "../components/EarlyReturns.jsx";
 import { loadAdvance } from "../api/advanceLedger.js";
+import useTitle from "../utils/useTitle.js";
 
 const PAGE_SIZE = 20;
 
@@ -43,6 +44,7 @@ export default function AdvanceLedgerPage() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState({});
   const [page, setPage] = useState(1);
+  useTitle("Advance Ledger");
 
   const cleanedFilters = Object.fromEntries(
     Object.entries(filters).filter(([, v]) => v !== "" && v != null),
@@ -62,7 +64,7 @@ export default function AdvanceLedgerPage() {
   }
 
   const results = data?.results ?? [];
-  const totalPages = Math.ceil((data?.count ?? 0) / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
 
   function handleFilterChange(newFilters) {
     setFilters(newFilters);

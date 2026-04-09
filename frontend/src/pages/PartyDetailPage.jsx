@@ -3,7 +3,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { deleteParty, getParty, updateParty } from "../api/parties";
-import { loadEmployees } from "../api/employees.js";
+import { loadAllEmployees } from "../api/employees.js";
 import { applyServerFormErrors } from "../api/error.js";
 
 import EarlyReturn from "../components/EarlyReturns.jsx";
@@ -12,6 +12,7 @@ import DetailFieldsRenderer from "../components/DetailFieldsRenderer.jsx";
 import ECSDButton from "../components/EditCancelSaveDelete.jsx";
 import ConfirmActionModal from "../components/ConfirmActionModal.jsx";
 import GoBackButton from "../components/GoBackButton.jsx";
+import useTitle from "../utils/useTitle.js";
 
 function partyToForm(party) {
   return {
@@ -105,6 +106,7 @@ function PartyDetailPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  useTitle("Party Detail");
 
   const {
     control,
@@ -121,8 +123,8 @@ function PartyDetailPage() {
   });
 
   const { data: employees } = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => loadEmployees().then((res) => res.results),
+    queryKey: ["employees", "all"],
+    queryFn: loadAllEmployees,
   });
 
   const updateMutation = useMutation({

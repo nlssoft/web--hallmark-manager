@@ -151,6 +151,11 @@ class Work_RateSerializer(serializers.ModelSerializer):
                                                                             
         return fields
     
+    def validate_party(self, values):
+        if values.user != self.context['request'].user :
+            raise serializers.ValidationError('Not you Party')
+        return values
+    
     def validate(self, data):
         party = data.get('party') or getattr(self.instance, 'party', None)
         service_type = data.get('service_type') or getattr(self.instance, 'service_type', None)
@@ -293,6 +298,11 @@ class RecordCreateSerializer(BaseRecordSerializer):
             "record_date",
         ]
 
+    def validate_party(self, values):
+        if values.user != self.context['request'].user :
+            raise serializers.ValidationError('Not you Party')
+        return values
+
 class RecordUpdateSerializer(BaseRecordSerializer):
 
     reason = serializers.CharField(
@@ -331,6 +341,10 @@ class BasePaymentSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_party(self, values):
+        if values.user != self.context['request'].user :
+            raise serializers.ValidationError('Not you Party')
+        return values
 
 class PaymentSerializer(BasePaymentSerializer):
     class Meta:

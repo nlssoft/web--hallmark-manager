@@ -51,7 +51,7 @@ class TestCreatePayment:
 
         response = api_client.post(
             reverse('payment-list'), {
-                'party': party.id,
+                'party_id': party.id,
                 "amount": 500
             }
         )
@@ -69,7 +69,7 @@ class TestCreatePayment:
 
         response = api_client.post(
             reverse('payment-list'), {
-                'party': party.id,
+                'party_id': party.id,
                 "amount": 200
             }
         )
@@ -232,7 +232,7 @@ class TestUinqueConditionsRecord:
 
         response = api_client.post(
             reverse('payment-list'), {
-                'party': party.id,
+                'party_id': party.id,
                 "amount": -250
             }
         )
@@ -276,7 +276,7 @@ class TestUinqueConditionsRecord:
         response_past_date = api_client.post(
             reverse('payment-list'),
             {
-                'party': party.id,
+                'party_id': party.id,
                 'amount': 500,
                 'payment_date': past_date.isoformat(),
             },
@@ -286,7 +286,7 @@ class TestUinqueConditionsRecord:
         response_future_date = api_client.post(
             reverse('payment-list'),
             {
-                'party': party.id,
+                'party_id': party.id,
                 'amount': 500,
                 'payment_date': future_date.isoformat(),
             },

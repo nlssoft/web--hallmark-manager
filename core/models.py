@@ -9,3 +9,6 @@ class User(AbstractUser):
     address = models.CharField(max_length=255)
     parent = models.ForeignKey(
         'self', null=True, blank=True, related_name='employees', on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ['-pk']

@@ -13,6 +13,7 @@ import PaginationControls from "../components/PaginationControls";
 import EarlyReturn from "../components/EarlyReturns";
 import ListPageLayout from "../components/ListPageLayout";
 import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
+import useTitle from "../utils/useTitle.js";
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -75,6 +76,7 @@ function PaymentPage() {
     date_range_after: "",
     date_range_before: "",
   });
+  useTitle("Payments");
 
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);

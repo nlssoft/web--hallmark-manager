@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { useAuth } from "../context/AuthContext";
+import { useForm, useWatch } from "react-hook-form";
+import { useAuth } from "../context/auth-context.js";
 import ListPageLayout from "../components/ListPageLayout.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
 import EarlyReturn from "../components/EarlyReturns.jsx";
+import useTitle from "../utils/useTitle.js";
 import {
   loadRequests,
   createRequest,
@@ -39,11 +40,15 @@ function formatDate(dt) {
 // ─── sub-user: create form ─────────────────────────────────────────────────
 
 function CreateForm({ onSuccess }) {
-  const { handleSubmit, watch, setValue, reset } = useForm({
+  const { control, handleSubmit, setValue, reset } = useForm({
     defaultValues: { record: [] },
   });
 
-  const selectedIds = watch("record");
+  const selectedIds =
+    useWatch({
+      control,
+      name: "record",
+    }) ?? [];
 
   const { data: recordsData, isLoading: recordsLoading } = useQuery({
     queryKey: ["eligible-records"],
@@ -140,6 +145,10 @@ function CreateForm({ onSuccess }) {
                 {/* Record meta row */}
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
                   {[
+                    {
+                      label: "Date",
+                      value: `${formatDate(record.record_date)}`,
+                    },
                     { label: "Rate", value: `₹${record.rate}` },
                     { label: "Pcs", value: record.pcs },
                     { label: "Amount", value: `₹${record.amount}` },
@@ -211,7 +220,7 @@ function RequestList({ isAdmin }) {
   }
 
   const results = data?.results ?? [];
-  const totalPages = Math.ceil((data?.count ?? 0) / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
 
   return (
     <div className="space-y-4">
@@ -308,6 +317,7 @@ function RequestList({ isAdmin }) {
 export default function PaymentRequestPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  useTitle("Payment Requests");
 
   const isAdmin = user?.parent_id === null || user?.parent_id === undefined;
 

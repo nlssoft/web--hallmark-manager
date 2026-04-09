@@ -1,9 +1,8 @@
 from django.conf import settings
-from rest_framework.request import Request
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken
-from rest_framework_simplejwt.tokens import Token
-
+from django.middleware.csrf import CsrfViewMiddleware
+from rest_framework import exceptions
 
 class CookieJwtAuthentication(JWTAuthentication):
     def authenticate(self, request):
@@ -18,8 +17,18 @@ class CookieJwtAuthentication(JWTAuthentication):
         except InvalidToken: 
             return None
         
+        # check if it's the same site
+        reason = CsrfViewMiddleware(lambda request: None).process_view(
+            request,
+            None,
+            (),
+            {},
+        )
+        if reason:
+            raise exceptions.PermissionDenied(f"CSRF Failed: {reason}")
+
         return self.get_user(validated_token), validated_token
-    
+  
 
         
 

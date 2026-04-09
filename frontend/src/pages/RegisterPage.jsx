@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import { createApiError, applyServerFormErrors } from "../api/error";
 import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
+import useTitle from "../utils/useTitle.js";
 
 const FIELDS = [
   {
@@ -44,20 +45,24 @@ function RegisterPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  useTitle("Register");
 
   const {
     control,
     register,
     handleSubmit,
-    watch,
     setError,
     formState: { errors, isSubmitting },
   } = useForm();
 
-  const passwordValue = watch("password");
+  const passwordValue =
+    useWatch({
+      control,
+      name: "password",
+    }) ?? "";
 
   async function onSubmit(data) {
-    const { confirm_password, ...payload } = data;
+    const { confirm_password: _confirm_password, ...payload } = data;
     try {
       await api.post("/auth/users/", payload);
       navigate("/login");

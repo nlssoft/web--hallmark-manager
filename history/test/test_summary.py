@@ -5,7 +5,7 @@ from model_bakery import baker
 from rest_framework import status
 from history.service import *
 from django.urls import reverse
-from datetime import date
+from datetime import date, timedelta
 from django.utils.timezone import localdate
 
 
@@ -20,6 +20,7 @@ class TestAuthCheckSummary:
 
     def test_user_a_cannot_see_user_b_summary(self, api_client):
         """User A should not see User B's records"""
+        today = localdate()
         user_a = baker.make(settings.AUTH_USER_MODEL)
         user_b = baker.make(settings.AUTH_USER_MODEL)
 
@@ -32,8 +33,8 @@ class TestAuthCheckSummary:
 
         response = api_client.get(reverse('summary'), {
             'type': 'record',
-            'date_from': '2025-12-20',
-            'date_to': '2026-01-31',
+            'date_from': (today - timedelta(days=1)).isoformat(),
+            'date_to': (today + timedelta(days=1)).isoformat(),
         })
 
         assert response.data["result"] == []
@@ -79,6 +80,8 @@ class TestRecordSummary:
 
     def test_record_works_with_audit_log(self, api_client, get_summary):
         today = localdate()
+        date_from = (today - timedelta(days=1)).isoformat()
+        date_to = (today + timedelta(days=1)).isoformat()
         user = baker.make(settings.AUTH_USER_MODEL)
         party = baker.make(Party, user=user)
         service = baker.make(Service_Type, user=user)
@@ -98,16 +101,16 @@ class TestRecordSummary:
 
         update_response = get_summary({
             'type': 'audit_log',
-            'date_from': '2025-12-20',
-            'date_to': '2026-01-31',
+            'date_from': date_from,
+            'date_to': date_to,
             'model': 'Record',
             'action': 'Update'
         })
 
         delete_response = get_summary({
             'type': 'audit_log',
-            'date_from': '2025-12-20',
-            'date_to': '2026-01-31',
+            'date_from': date_from,
+            'date_to': date_to,
             'model': 'record',
             'action': 'delete'
         })
@@ -164,6 +167,8 @@ class TestPaymentSummary:
 
     def test_payment_works_with_audit_log(self, api_client, get_summary):
         today = localdate()
+        date_from = (today - timedelta(days=1)).isoformat()
+        date_to = (today + timedelta(days=1)).isoformat()
         user = baker.make(settings.AUTH_USER_MODEL)
         party = baker.make(Party, user=user)
         payment_update = baker.make(Payment, party=party,
@@ -181,16 +186,16 @@ class TestPaymentSummary:
 
         update_response = get_summary({
             'type': 'audit_log',
-            'date_from': '2025-12-20',
-            'date_to': '2026-01-31',
+            'date_from': date_from,
+            'date_to': date_to,
             'model': 'Payment',
             'action': 'Update'
         })
 
         delete_response = get_summary({
             'type': 'audit_log',
-            'date_from': '2025-12-20',
-            'date_to': '2026-01-31',
+            'date_from': date_from,
+            'date_to': date_to,
             'model': 'Payment',
             'action': 'delete'
         })

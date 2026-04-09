@@ -2,10 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import { getMyProfile, updateMyProfile } from "../api/profile";
+import useTitle from "../utils/useTitle.js";
 
 export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  useTitle("Profile");
 
   const {
     data: user,

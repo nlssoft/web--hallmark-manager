@@ -18,6 +18,7 @@ import DetailFieldsRenderer from "../components/DetailFieldsRenderer.jsx";
 import ECSDButton from "../components/EditCancelSaveDelete.jsx";
 import ConfirmActionModal from "../components/ConfirmActionModal.jsx";
 import GoBackButton from "../components/GoBackButton.jsx";
+import useTitle from "../utils/useTitle.js";
 
 function workRateToForm(wr) {
   return {
@@ -78,6 +79,7 @@ function WorkRateDetailPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  useTitle("Work Rate Detail");
 
   const {
     control,
