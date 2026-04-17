@@ -310,7 +310,7 @@ function RecordPage() {
                           : "info-pill status-pill--danger"
                       }
                     >
-                      {r.paid_amount >= r.amount ? "Paid" : "Due"}
+                      {r.paid_amount >= r.amount - r.discount ? "Paid" : "Due"}
                     </span>
                   </div>
                 </div>

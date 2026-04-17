@@ -12,6 +12,7 @@ function getCsrfToken() {
     ?.split("=")[1];
 }
 
+// ✅ Attach CSRF token
 api.interceptors.request.use((config) => {
   const csrfToken = getCsrfToken();
 
@@ -23,6 +24,10 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// =============================
+// 🔥 RESPONSE INTERCEPTOR
+// =============================
+
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -31,17 +36,17 @@ function processQueue(error) {
     if (error) reject(error);
     else resolve();
   });
-
   failedQueue = [];
 }
 
+// ✅ Centralized skip logic
 function shouldSkipRefresh(url = "") {
   return [
     "/auth/login/",
     "/auth/refresh/",
     "/auth/logout/",
     "/auth/csrf/",
-    "/auth/profile/me/",
+    "/auth/profile/me/", // important
     "/auth/users/reset_password/",
     "/auth/users/reset_password_confirm/",
   ].some((path) => url.includes(path));
@@ -49,20 +54,23 @@ function shouldSkipRefresh(url = "") {
 
 api.interceptors.response.use(
   (response) => response,
+
   async (error) => {
     const original = error.config;
 
-    if (
-      !original ||
-      error.response?.status !== 401 ||
-      original._retry ||
-      shouldSkipRefresh(original.url)
-    ) {
+    // ✅ If no response or not 401 → ignore
+    if (!error.response || error.response.status !== 401) {
+      return Promise.reject(error);
+    }
+
+    // ✅ If request should NOT trigger refresh
+    if (!original || original._retry || shouldSkipRefresh(original.url)) {
       return Promise.reject(error);
     }
 
     original._retry = true;
 
+    // 🧠 If refresh already running → queue request
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
@@ -75,11 +83,14 @@ api.interceptors.response.use(
 
     try {
       await api.post("/auth/refresh/");
+
       processQueue(null);
-      return api(original);
+
+      return api(original); // retry original request
     } catch (err) {
       processQueue(err);
 
+      // ✅ Only redirect if NOT already on login
       if (window.location.pathname !== "/login") {
         window.location.replace("/login");
       }
@@ -88,7 +99,7 @@ api.interceptors.response.use(
     } finally {
       isRefreshing = false;
     }
-  },
+  }
 );
 
 export default api;

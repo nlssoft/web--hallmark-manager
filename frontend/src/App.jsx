@@ -29,7 +29,7 @@ function App() {
   return (
     <Routes>
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<LoginPage />} />
       <Route path="/forgot-password/" element={<SendEmailPage />} />
       <Route
         path="/reset-password/:uid/:token"

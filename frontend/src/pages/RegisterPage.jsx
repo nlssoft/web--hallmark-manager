@@ -65,7 +65,7 @@ function RegisterPage() {
     const { confirm_password: _confirm_password, ...payload } = data;
     try {
       await api.post("/auth/users/", payload);
-      navigate("/login");
+      navigate("/");
     } catch (err) {
       const apiError = createApiError(err);
       applyServerFormErrors(apiError, setError, "Registration failed.");

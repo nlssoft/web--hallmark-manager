@@ -130,11 +130,12 @@ INTERNAL_IPS = [
 # security settings
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=False)
 
 
 # settings I added
@@ -175,15 +176,13 @@ SIMPLE_JWT = {
     'AUTH_COOKIE_SAMESITE': 'Lax'
 }
 
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173'
-]
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 
 CORS_ALLOW_CREDENTIALS = True
 
 AUTH_USER_MODEL = 'core.User'
 
-CSRF_TRUSTED_ORIGINS = ['http://localhost:5173']
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS',  default=[])
 
 
 if DEBUG:
