@@ -231,7 +231,7 @@ class TestPaymentSummary:
         assert breakdown['Service B']['total_pcs'] == 20
         assert Decimal(breakdown['Service B']['total_amount']) == Decimal('300.00')
 
-    def test_payment_summary_excludes_partially_paid_records(self, api_client, get_summary):
+    def test_payment_summary_includes_partial_amount_but_not_pcs_until_fully_paid(self, api_client, get_summary):
         user = baker.make(settings.AUTH_USER_MODEL)
         party = baker.make(Party, user=user)
         service_full = baker.make(Service_Type, user=user, type_of_work="Fully Paid")
@@ -286,7 +286,8 @@ class TestPaymentSummary:
 
         assert breakdown['Fully Paid']['total_pcs'] == 5
         assert Decimal(breakdown['Fully Paid']['total_amount']) == Decimal('500.00')
-        assert 'Partially Paid' not in breakdown
+        assert breakdown['Partially Paid']['total_pcs'] == 0
+        assert Decimal(breakdown['Partially Paid']['total_amount']) == Decimal('200.00')
 
     def test_payment_summary_adds_remaining_advance_to_single_fully_paid_service(self, api_client, get_summary):
         user = baker.make(settings.AUTH_USER_MODEL)

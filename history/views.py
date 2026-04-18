@@ -439,34 +439,39 @@ class SummaryView(APIView):
             total_payments = qs.count()
             total_paid = qs.aggregate(total=Sum('amount'))['total'] or 0
 
-            fully_paid_records = Record.objects.annotate(
-                total_amount=ExpressionWrapper(
-                    F('pcs') * F('rate') - F('discount'),
-                    output_field=DecimalField()
-                )
-            ).filter(
-                paid_amount__gte=F('total_amount')
-            )
-
             allocation_rows = Allocation.objects.filter(
                 payment__in=qs,
-                record__in=fully_paid_records
+                record__isnull=False
+            ).annotate(
+                record_total_amount=ExpressionWrapper(
+                    F('record__pcs') * F('record__rate') - F('record__discount'),
+                    output_field=DecimalField()
+                )
             ).values(
                 'payment_id',
                 'record_id',
                 'record__pcs',
+                'record__paid_amount',
+                'record_total_amount',
                 'record__service_type__type_of_work',
                 'amount',
             )
 
             advance_rows = AdvanceLedger.objects.filter(
                 payment__in=qs,
-                record__in=fully_paid_records,
+                record__isnull=False,
                 direction='OUT'
+            ).annotate(
+                record_total_amount=ExpressionWrapper(
+                    F('record__pcs') * F('record__rate') - F('record__discount'),
+                    output_field=DecimalField()
+                )
             ).values(
                 'payment_id',
                 'record_id',
                 'record__pcs',
+                'record__paid_amount',
+                'record_total_amount',
                 'record__service_type__type_of_work',
                 'amount',
             )
@@ -500,7 +505,11 @@ class SummaryView(APIView):
                 payment_services[row['payment_id']].add(service_name)
 
                 record_id = row['record_id']
-                if record_id and record_id not in bucket['_record_ids']:
+                record_is_fully_paid = (
+                    record_id
+                    and (row['record__paid_amount'] or 0) >= (row['record_total_amount'] or 0)
+                )
+                if record_is_fully_paid and record_id not in bucket['_record_ids']:
                     bucket['_record_ids'].add(record_id)
                     bucket['total_pcs'] += row['record__pcs'] or 0
 
@@ -508,7 +517,7 @@ class SummaryView(APIView):
                 services = payment_services.get(payment_id, set())
 
                 # Only roll leftover advance into the breakdown when this payment
-                # maps cleanly to a single fully-paid service.
+                # maps cleanly to a single service bucket.
                 if remaining_amount and len(services) == 1:
                     service_name = next(iter(services))
                     bucket = service_totals[service_name]
