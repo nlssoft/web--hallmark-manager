@@ -288,6 +288,51 @@ class TestPaymentSummary:
         assert Decimal(breakdown['Fully Paid']['total_amount']) == Decimal('500.00')
         assert 'Partially Paid' not in breakdown
 
+    def test_payment_summary_adds_remaining_advance_to_single_fully_paid_service(self, api_client, get_summary):
+        user = baker.make(settings.AUTH_USER_MODEL)
+        party = baker.make(Party, user=user)
+        service_card = baker.make(Service_Type, user=user, type_of_work="CARD")
+
+        baker.make(
+            Record,
+            party=party,
+            service_type=service_card,
+            pcs=11,
+            rate=Decimal("97.00"),
+            discount=Decimal("1.80"),
+            paid_amount=Decimal("0.00"),
+            record_date=date(2026, 4, 17),
+        )
+
+        payment = baker.make(
+            Payment,
+            party=party,
+            amount=Decimal("1165.20"),
+            payment_date=date(2026, 4, 17),
+        )
+
+        PaymentService.allocate_payment(payment)
+
+        api_client.force_authenticate(user=user)
+
+        response = get_summary({
+            'type': 'payment',
+            'date_from': '2026-04-01',
+            'date_to': '2026-04-30',
+        })
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['summary']['total_payments'] == 1
+        assert Decimal(response.data['summary']['total_paid']) == Decimal('1165.20')
+
+        breakdown = {
+            item['service_type__type_of_work']: item
+            for item in response.data['summary']['service_type_summary']
+        }
+
+        assert breakdown['CARD']['total_pcs'] == 11
+        assert Decimal(breakdown['CARD']['total_amount']) == Decimal('1165.20')
+
     def test_payment_works_with_audit_log(self, api_client, get_summary):
         today = localdate()
         date_from = (today - timedelta(days=1)).isoformat()

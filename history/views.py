@@ -452,11 +452,35 @@ class SummaryView(APIView):
                 payment__in=qs,
                 record__in=fully_paid_records
             ).values(
+                'payment_id',
                 'record_id',
                 'record__pcs',
                 'record__service_type__type_of_work',
                 'amount',
             )
+
+            advance_rows = AdvanceLedger.objects.filter(
+                payment__in=qs,
+                record__in=fully_paid_records,
+                direction='OUT'
+            ).values(
+                'payment_id',
+                'record_id',
+                'record__pcs',
+                'record__service_type__type_of_work',
+                'amount',
+            )
+
+            payment_remaining_advances = {
+                row['payment_id']: row['remaining_amount'] or 0
+                for row in AdvanceLedger.objects.filter(
+                    payment__in=qs,
+                    direction='IN',
+                    remaining_amount__gt=0
+                ).values('payment_id').annotate(
+                    remaining_amount=Sum('remaining_amount')
+                )
+            }
 
             service_totals = defaultdict(
                 lambda: {
@@ -466,17 +490,30 @@ class SummaryView(APIView):
                     '_record_ids': set(),
                 }
             )
+            payment_services = defaultdict(set)
 
-            for row in allocation_rows:
+            for row in list(allocation_rows) + list(advance_rows):
                 service_name = row['record__service_type__type_of_work'] or 'Unknown'
                 bucket = service_totals[service_name]
                 bucket['service_type__type_of_work'] = service_name
                 bucket['total_amount'] += row['amount'] or 0
+                payment_services[row['payment_id']].add(service_name)
 
                 record_id = row['record_id']
                 if record_id and record_id not in bucket['_record_ids']:
                     bucket['_record_ids'].add(record_id)
                     bucket['total_pcs'] += row['record__pcs'] or 0
+
+            for payment_id, remaining_amount in payment_remaining_advances.items():
+                services = payment_services.get(payment_id, set())
+
+                # Only roll leftover advance into the breakdown when this payment
+                # maps cleanly to a single fully-paid service.
+                if remaining_amount and len(services) == 1:
+                    service_name = next(iter(services))
+                    bucket = service_totals[service_name]
+                    bucket['service_type__type_of_work'] = service_name
+                    bucket['total_amount'] += remaining_amount
 
             service_type_summary = [
                 {
