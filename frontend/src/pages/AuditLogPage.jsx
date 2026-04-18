@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { loadAudit } from "../api/audit.js";
-import { formatDate } from "../utils/dateFormat.js";
+import { formatDate, getLocalDateValue } from "../utils/dateFormat.js";
 import useTitle from "../utils/useTitle.js";
 
 import FiltersBar from "../components/FilterBar.jsx";
@@ -11,7 +11,7 @@ import PaginationControls from "../components/PaginationControls.jsx";
 import EarlyReturn from "../components/EarlyReturns.jsx";
 import ListPageLayout from "../components/ListPageLayout.jsx";
 
-const today = new Date().toISOString().split("T")[0];
+const today = getLocalDateValue();
 
 const filterFields = [
   { name: "party__logo", label: "Logo", placeholder: "Enter logo" },

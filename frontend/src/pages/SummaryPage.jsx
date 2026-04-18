@@ -715,24 +715,40 @@ export default function SummaryPage() {
                       </p>
                     </div>
 
-                    {/* Service breakdown for records */}
-                    {activeFilters.type === "record" &&
+                    {/* Service breakdown for records and payments */}
+                    {(activeFilters.type === "record" ||
+                      activeFilters.type === "payment") &&
                       serviceBreakdown.length > 0 && (
-                        <div style={{ marginBottom: "1rem" }}>
+                        <section
+                          className="summary-service-breakdown"
+                          style={{ marginBottom: "1rem" }}
+                        >
+                          <div className="summary-service-breakdown__header">
+                            <h3>Service-wise breakdown</h3>
+                            <span>
+                              {activeFilters.type === "payment"
+                                ? "Collected amount grouped by service"
+                                : "Work summary grouped by service"}
+                            </span>
+                          </div>
+
                           <div className="summary-service-breakdown__grid">
-                            {serviceBreakdown.map((s) => (
+                            {serviceBreakdown.map((s, index) => (
                               <div
-                                key={s.service_type__type_of_work || "s"}
+                                key={`${s.service_type__type_of_work || "service"}-${index}`}
                                 className="summary-service-pill"
                               >
                                 <strong>
                                   {s.service_type__type_of_work || "Unknown"}
                                 </strong>
                                 <span>{s.total_pcs ?? 0} pcs</span>
+                                {activeFilters.type === "payment" && (
+                                  <span>{formatCurrency(s.total_amount)}</span>
+                                )}
                               </div>
                             ))}
                           </div>
-                        </div>
+                        </section>
                       )}
 
                     {/* Row count strip */}

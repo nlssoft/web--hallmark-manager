@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 
-import { formatDate } from "../utils/dateFormat.js";
+import { formatDate, getLocalDateValue } from "../utils/dateFormat.js";
 import { applyServerFormErrors } from "../api/error";
 import { createRecord, loadRecords } from "../api/record.js";
 import { loadParties } from "../api/parties.js";
@@ -16,7 +16,7 @@ import ListPageLayout from "../components/ListPageLayout";
 import CreateFieldsRenderer from "../components/CreateFieldsRenderer";
 import useTitle from "../utils/useTitle.js";
 
-const today = new Date().toISOString().split("T")[0];
+const today = getLocalDateValue();
 
 const fields = [
   {

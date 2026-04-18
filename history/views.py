@@ -439,6 +439,61 @@ class SummaryView(APIView):
             total_payments = qs.count()
             total_paid = qs.aggregate(total=Sum('amount'))['total'] or 0
 
+            fully_paid_records = Record.objects.annotate(
+                total_amount=ExpressionWrapper(
+                    F('pcs') * F('rate') - F('discount'),
+                    output_field=DecimalField()
+                )
+            ).filter(
+                paid_amount__gte=F('total_amount')
+            )
+
+            allocation_rows = Allocation.objects.filter(
+                payment__in=qs,
+                record__in=fully_paid_records
+            ).values(
+                'record_id',
+                'record__pcs',
+                'record__service_type__type_of_work',
+                'amount',
+            )
+
+            service_totals = defaultdict(
+                lambda: {
+                    'service_type__type_of_work': 'Unknown',
+                    'total_amount': 0,
+                    'total_pcs': 0,
+                    '_record_ids': set(),
+                }
+            )
+
+            for row in allocation_rows:
+                service_name = row['record__service_type__type_of_work'] or 'Unknown'
+                bucket = service_totals[service_name]
+                bucket['service_type__type_of_work'] = service_name
+                bucket['total_amount'] += row['amount'] or 0
+
+                record_id = row['record_id']
+                if record_id and record_id not in bucket['_record_ids']:
+                    bucket['_record_ids'].add(record_id)
+                    bucket['total_pcs'] += row['record__pcs'] or 0
+
+            service_type_summary = [
+                {
+                    'service_type__type_of_work': item['service_type__type_of_work'],
+                    'total_amount': item['total_amount'],
+                    'total_pcs': item['total_pcs'],
+                }
+                for item in service_totals.values()
+            ]
+
+            service_type_summary.sort(
+                key=lambda item: (
+                    -(item['total_amount'] or 0),
+                    item['service_type__type_of_work'] or '',
+                )
+            )
+
             data = list(qs.order_by('payment_date')[offset:limit].values(
                 "id", 'payment_date', 'amount',
                 first_name=F('party__first_name'),
@@ -450,6 +505,7 @@ class SummaryView(APIView):
                 'summary': {
                     'total_payments': total_payments,
                     'total_paid': total_paid,
+                    'service_type_summary': service_type_summary,
                 },
                 'pagination': {
                     'page': page,

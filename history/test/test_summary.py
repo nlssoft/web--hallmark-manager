@@ -7,6 +7,7 @@ from history.service import *
 from django.urls import reverse
 from datetime import date, timedelta
 from django.utils.timezone import localdate
+from decimal import Decimal
 
 
 @pytest.mark.django_db
@@ -164,6 +165,128 @@ class TestPaymentSummary:
 
         assert response.status_code == status.HTTP_200_OK
         assert payment_id == {payment.id}
+
+    def test_payment_summary_includes_service_breakdown(self, api_client, get_summary):
+        user = baker.make(settings.AUTH_USER_MODEL)
+        party = baker.make(Party, user=user)
+        service_a = baker.make(Service_Type, user=user, type_of_work="Service A")
+        service_b = baker.make(Service_Type, user=user, type_of_work="Service B")
+
+        baker.make(
+            Record,
+            party=party,
+            service_type=service_a,
+            pcs=10,
+            rate=Decimal("70.00"),
+            discount=Decimal("0.00"),
+            paid_amount=Decimal("0.00"),
+            record_date=date(2026, 2, 1),
+        )
+        baker.make(
+            Record,
+            party=party,
+            service_type=service_b,
+            pcs=20,
+            rate=Decimal("15.00"),
+            discount=Decimal("0.00"),
+            paid_amount=Decimal("0.00"),
+            record_date=date(2026, 2, 2),
+        )
+
+        payment_one = baker.make(
+            Payment,
+            party=party,
+            amount=Decimal("500.00"),
+            payment_date=date(2026, 2, 3),
+        )
+        payment_two = baker.make(
+            Payment,
+            party=party,
+            amount=Decimal("500.00"),
+            payment_date=date(2026, 2, 4),
+        )
+
+        PaymentService.allocate_payment(payment_one)
+        PaymentService.allocate_payment(payment_two)
+
+        api_client.force_authenticate(user=user)
+
+        response = get_summary({
+            'type': 'payment',
+            'date_from': '2026-02-01',
+            'date_to': '2026-02-28',
+        })
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['summary']['total_payments'] == 2
+        assert Decimal(response.data['summary']['total_paid']) == Decimal('1000.00')
+
+        breakdown = {
+            item['service_type__type_of_work']: item
+            for item in response.data['summary']['service_type_summary']
+        }
+
+        assert breakdown['Service A']['total_pcs'] == 10
+        assert Decimal(breakdown['Service A']['total_amount']) == Decimal('700.00')
+        assert breakdown['Service B']['total_pcs'] == 20
+        assert Decimal(breakdown['Service B']['total_amount']) == Decimal('300.00')
+
+    def test_payment_summary_excludes_partially_paid_records(self, api_client, get_summary):
+        user = baker.make(settings.AUTH_USER_MODEL)
+        party = baker.make(Party, user=user)
+        service_full = baker.make(Service_Type, user=user, type_of_work="Fully Paid")
+        service_partial = baker.make(Service_Type, user=user, type_of_work="Partially Paid")
+
+        baker.make(
+            Record,
+            party=party,
+            service_type=service_full,
+            pcs=5,
+            rate=Decimal("100.00"),
+            discount=Decimal("0.00"),
+            paid_amount=Decimal("0.00"),
+            record_date=date(2026, 3, 1),
+        )
+        baker.make(
+            Record,
+            party=party,
+            service_type=service_partial,
+            pcs=4,
+            rate=Decimal("100.00"),
+            discount=Decimal("0.00"),
+            paid_amount=Decimal("0.00"),
+            record_date=date(2026, 3, 2),
+        )
+
+        payment = baker.make(
+            Payment,
+            party=party,
+            amount=Decimal("700.00"),
+            payment_date=date(2026, 3, 3),
+        )
+
+        PaymentService.allocate_payment(payment)
+
+        api_client.force_authenticate(user=user)
+
+        response = get_summary({
+            'type': 'payment',
+            'date_from': '2026-03-01',
+            'date_to': '2026-03-31',
+        })
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['summary']['total_payments'] == 1
+        assert Decimal(response.data['summary']['total_paid']) == Decimal('700.00')
+
+        breakdown = {
+            item['service_type__type_of_work']: item
+            for item in response.data['summary']['service_type_summary']
+        }
+
+        assert breakdown['Fully Paid']['total_pcs'] == 5
+        assert Decimal(breakdown['Fully Paid']['total_amount']) == Decimal('500.00')
+        assert 'Partially Paid' not in breakdown
 
     def test_payment_works_with_audit_log(self, api_client, get_summary):
         today = localdate()
