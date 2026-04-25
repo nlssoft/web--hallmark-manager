@@ -8,7 +8,7 @@ from datetime import timedelta
 from django.utils.timezone import localdate
 
 from history.service import *
-from history.models import Party, Service_Type, Record, Payment_Request, Payment
+from history.models import Allocation, Party, Service_Type, Record, Payment_Request, Payment
 
 
 def _results(data):
@@ -123,6 +123,59 @@ class TestPaymentRequestApproveReject:
         assert pr.status == "A"
         assert Payment.objects.filter(
             party=party, amount=Decimal("50.00")).exists()
+
+    def test_approve_pays_requested_record_not_older_unrequested_due(self, api_client):
+        main = baker.make(settings.AUTH_USER_MODEL)
+        child = baker.make(settings.AUTH_USER_MODEL, parent=main)
+
+        party = baker.make(Party, user=main, assigned_to=child)
+        service = baker.make(Service_Type, user=main)
+        older_record = baker.make(
+            Record,
+            party=party,
+            service_type=service,
+            rate=Decimal("10.00"),
+            pcs=10,
+            paid_amount=Decimal("0.00"),
+            record_date=localdate() - timedelta(days=1),
+        )
+        requested_record = baker.make(
+            Record,
+            party=party,
+            service_type=service,
+            rate=Decimal("10.00"),
+            pcs=5,
+            paid_amount=Decimal("0.00"),
+            record_date=localdate(),
+        )
+
+        pr = baker.make(
+            Payment_Request,
+            created_by=child,
+            requested_amount=Decimal("50.00"),
+            status="P",
+        )
+        pr.record.add(requested_record)
+
+        api_client.force_authenticate(user=main)
+        response = api_client.post(
+            reverse("request-payment-approve", args=[pr.id]), format="json")
+
+        older_record.refresh_from_db()
+        requested_record.refresh_from_db()
+        pr.refresh_from_db()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert pr.status == "A"
+        assert older_record.paid_amount == Decimal("0.00")
+        assert older_record.remaining_amount == Decimal("100.00")
+        assert requested_record.paid_amount == Decimal("50.00")
+        assert requested_record.remaining_amount == Decimal("0.00")
+        assert Allocation.objects.filter(
+            record=requested_record,
+            payment__party=party,
+            amount=Decimal("50.00"),
+        ).exists()
 
     def test_child_cannot_approve(self, api_client):
         main = baker.make(settings.AUTH_USER_MODEL)

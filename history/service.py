@@ -286,6 +286,40 @@ class PaymentService:
             )
 
     @staticmethod
+    def allocate_payment_to_records(payment, records):
+        remaining_payment = payment.amount
+
+        for record in records:
+            if remaining_payment <= 0:
+                break
+
+            if record.party_id != payment.party_id:
+                continue
+
+            if record.remaining_amount <= 0:
+                continue
+
+            allocated = min(record.remaining_amount, remaining_payment)
+
+            Allocation.objects.create(
+                payment=payment,
+                amount=allocated,
+                record=record
+            )
+
+            record.apply_payment(allocated)
+            remaining_payment -= allocated
+
+        if remaining_payment > 0:
+            AdvanceLedger.objects.create(
+                party=payment.party,
+                payment=payment,
+                amount=remaining_payment,
+                remaining_amount=remaining_payment,
+                direction='IN'
+            )
+
+    @staticmethod
     def rollback_payment(payment):
         # 1) Undo allocations
         allocation_qs = list(

@@ -746,8 +746,15 @@ class PaymentRequestviewset(ModelViewSet):
         with transaction.atomic():
             pr = Payment_Request.objects.select_for_update().get(pk=pk)
 
+            requested_records = list(
+                pr.record.select_related('party').select_for_update()
+            )
+
             # verify all records belong to this admin
-            if pr.record.exclude(party__user=request.user).exists():
+            if any(
+                record.party.user_id != request.user.id
+                for record in requested_records
+            ):
                 raise PermissionDenied('Invalid record.')
 
             if pr.status != 'P':
@@ -756,13 +763,13 @@ class PaymentRequestviewset(ModelViewSet):
 
             # group records by party, create one payment per party
             grouped = defaultdict(list)
-            for record in pr.record.select_related('party').all():
+            for record in requested_records:
                 grouped[record.party].append(record)
 
             for party, records in grouped.items():
                 amount = sum(r.remaining_amount for r in records)
                 payment = Payment.objects.create(party=party, amount=amount)
-                PaymentService.allocate_payment(payment)
+                PaymentService.allocate_payment_to_records(payment, records)
                 PaymentService.sync_pending_request_amounts_for_party(party)
 
             pr.status = 'A'
