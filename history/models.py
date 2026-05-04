@@ -31,6 +31,10 @@ class Party(models.Model):
 
     @property
     def due(self):
+        computed_due = getattr(self, 'computed_due', None)
+        if computed_due is not None:
+            return computed_due
+
         current = self.record_set.aggregate(
             total=Sum(ExpressionWrapper(
                 (F('rate') * F('pcs')) - F('discount') - F('paid_amount'),
@@ -45,6 +49,10 @@ class Party(models.Model):
 
     @property
     def advance_balance(self):
+        computed_advance_balance = getattr(self, 'computed_advance_balance', None)
+        if computed_advance_balance is not None:
+            return computed_advance_balance
+
         result = self.advanceledger_set.filter(
             direction="IN"
         ).aggregate(

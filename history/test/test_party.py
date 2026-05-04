@@ -1,6 +1,9 @@
 import pytest
+from decimal import Decimal
 from django.conf import settings
-from history.models import Party, Record, Service_Type, Payment
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+from history.models import AdvanceLedger, Party, Record, Service_Type, Payment
 from model_bakery import baker
 from rest_framework import status
 from django.urls import reverse
@@ -43,6 +46,69 @@ class TestGetingDetails:
         response = api_client.get(reverse('party-list'))
 
         assert response.data["results"] == []
+
+    def test_party_list_uses_precomputed_balances(self, api_client):
+        user = baker.make(settings.AUTH_USER_MODEL)
+        employee = baker.make(settings.AUTH_USER_MODEL, parent=user)
+        party = baker.make(
+            Party,
+            user=user,
+            assigned_to=employee,
+            first_name="A",
+            last_name="Party",
+        )
+        service = baker.make(Service_Type, user=user)
+        baker.make(
+            Record,
+            party=party,
+            service_type=service,
+            rate=Decimal("10.00"),
+            pcs=5,
+            discount=Decimal("5.00"),
+            paid_amount=Decimal("10.00"),
+        )
+        baker.make(
+            Record,
+            party=party,
+            service_type=service,
+            rate=Decimal("20.00"),
+            pcs=2,
+            discount=Decimal("0.00"),
+            paid_amount=Decimal("5.00"),
+        )
+        baker.make(
+            AdvanceLedger,
+            party=party,
+            amount=Decimal("30.00"),
+            remaining_amount=Decimal("30.00"),
+            direction="IN",
+        )
+        baker.make(
+            AdvanceLedger,
+            party=party,
+            amount=Decimal("20.00"),
+            remaining_amount=Decimal("20.00"),
+            direction="IN",
+        )
+        baker.make(
+            AdvanceLedger,
+            party=party,
+            amount=Decimal("7.00"),
+            remaining_amount=Decimal("7.00"),
+            direction="OUT",
+        )
+
+        api_client.force_authenticate(user=user)
+        with CaptureQueriesContext(connection) as queries:
+            response = api_client.get(reverse('party-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(queries) <= 4
+        assert Decimal(response.data["results"][0]["due"]) == Decimal("70.00")
+        assert Decimal(
+            response.data["results"][0]["advance_balance"]
+        ) == Decimal("50.00")
+        assert response.data["results"][0]["assigned_to"]["id"] == employee.id
 
 
 @pytest.mark.django_db

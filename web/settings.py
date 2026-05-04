@@ -81,7 +81,11 @@ WSGI_APPLICATION = 'web.wsgi.application'
 
 # what about db? 
 DATABASES = {
-    'default': env.db()
+    'default': {
+        **env.db(),
+        'CONN_MAX_AGE': 0,
+        'CONN_HEALTH_CHECKS': True,
+    }
 }
 
 

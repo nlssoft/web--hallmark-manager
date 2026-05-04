@@ -3,9 +3,14 @@
 # from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 
 import json
+from decimal import Decimal
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Q, F, Value, Func, ExpressionWrapper, DecimalField, aggregates, Sum
+from django.db.models import (
+    Q, F, Value, Func, ExpressionWrapper, DecimalField, aggregates, Sum,
+    OuterRef, Subquery, Case, When,
+)
+from django.db.models.functions import Coalesce
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import render, get_object_or_404
@@ -40,12 +45,55 @@ class PartyViewSet(ModelViewSet):
     pagination_class = NormalPagination
 
     def get_queryset(self):
-        if self.request.user.parent:
-            return Party.objects.filter(assigned_to=self.request.user)
-        return Party.objects.filter(user=self.request.user)
+        if getattr(self.request.user, 'parent_id', None):
+            queryset = Party.objects.filter(assigned_to=self.request.user)
+        else:
+            queryset = Party.objects.filter(user=self.request.user)
+
+        return self.with_balances(queryset.select_related('user', 'assigned_to'))
+
+    def with_balances(self, queryset):
+        money_field = DecimalField(max_digits=12, decimal_places=2)
+        zero = Value(Decimal('0.00'), output_field=money_field)
+
+        due_expression = ExpressionWrapper(
+            (F('rate') * F('pcs')) - F('discount') - F('paid_amount'),
+            output_field=money_field,
+        )
+        due_subquery = Record.objects.filter(
+            party=OuterRef('pk')
+        ).order_by().values('party').annotate(
+            total=Sum(due_expression)
+        ).values('total')[:1]
+
+        advance_subquery = AdvanceLedger.objects.filter(
+            party=OuterRef('pk'),
+            direction="IN",
+        ).order_by().values('party').annotate(
+            total=Sum('remaining_amount')
+        ).values('total')[:1]
+
+        return queryset.annotate(
+            computed_due_raw=Coalesce(
+                Subquery(due_subquery, output_field=money_field),
+                zero,
+                output_field=money_field,
+            ),
+            computed_advance_balance=Coalesce(
+                Subquery(advance_subquery, output_field=money_field),
+                zero,
+                output_field=money_field,
+            ),
+        ).annotate(
+            computed_due=Case(
+                When(computed_due_raw__lt=0, then=zero),
+                default=F('computed_due_raw'),
+                output_field=money_field,
+            )
+        )
 
     def perform_create(self, serializer):
-        if self.request.user.parent:
+        if getattr(self.request.user, 'parent_id', None):
             raise PermissionDenied("Only main account can create party.")
         serializer.save(user=self.request.user)
 

@@ -48,7 +48,7 @@ class PartySerializer(serializers.ModelSerializer):
         if request:
             user = request.user
 
-            if user.parent:
+            if getattr(user, 'parent_id', None):
                 # sub-user → cannot assign anyone
                 self.fields['assigned_to_id'].queryset = user_model.objects.none()
             else:
@@ -80,7 +80,7 @@ class PartySerializer(serializers.ModelSerializer):
             return value
         user = request.user
 
-        if user.parent and value is not None:
+        if getattr(user, 'parent_id', None) and value is not None:
             raise serializers.ValidationError('Only Admin can assign party.')
 
         if value is not None and value.parent_id != user.id:
